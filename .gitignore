@@ -1,0 +1,75 @@
+############################
+# Global OS / Editor files #
+############################
+.DS_Store
+Thumbs.db
+*.log
+logs/
+.vscode/
+.idea/
+*.swp
+
+###########################
+# Environment / Secrets   #
+###########################
+# Global patterns
+.env
+.env.*
+*.secret
+*.key
+*.pem
+
+# Project-specific env files
+frontend/.env.local
+backend/.env
+.env.local
+.env
+###########################
+# Python Backend          #
+###########################
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/**/*.pyd
+venv/
+env/
+virtualenv/
+
+# FastAPI / Uvicorn
+instance/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+pytest.cache/
+
+###########################
+# Node / Next.js Frontend #
+###########################
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/build/
+
+# Next.js special files
+frontend/.vercel/
+frontend/.turbo/
+
+# TypeScript
+frontend/*.tsbuildinfo
+
+###########################
+# Build scripts / tools   #
+###########################
+*.lock
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+###########################
+# Misc                    #
+###########################
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
