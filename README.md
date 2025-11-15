@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 HireMate/
 │
 ├── frontend/                           # Next.js 15.5.4 app
@@ -104,3 +105,6 @@ git status        # check changes
 git add .         # stage changes
 git commit -m "your message"   # commit changes
 git push          # push to GitHub
+=======
+# Final_year_project
+>>>>>>> 5a3b6f55f95c521f5a966fcd89ae8abec8769286
