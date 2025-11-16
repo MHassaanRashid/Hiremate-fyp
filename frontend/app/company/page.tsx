@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import Sidebar from "@/components/recruiter-Sidebar"
+import CompanySidebar from "@/components/company/CompanySidebar"
 import {
   Search,
   Users,
@@ -144,7 +144,7 @@ export default function RecruiterDashboard() {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+      <CompanySidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         <header className="bg-white/80 backdrop-blur-xl border-b border-blue-200/50 p-6">

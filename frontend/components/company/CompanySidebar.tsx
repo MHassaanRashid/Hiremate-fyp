@@ -17,7 +17,7 @@ const sidebarItems = [
   { label: "Logout", route: "/logout" },
 ]
 
-export default function Sidebar({
+export default function CompanySidebar({
   sidebarOpen,
   setSidebarOpen,
 }: {

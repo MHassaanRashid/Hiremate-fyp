@@ -4,6 +4,7 @@ from app.routers import (
     auth,
     candidate_management,
     candidates,
+    dashboard,
     interviews,
     profile,
     resume_router as resume,
@@ -19,6 +20,7 @@ cors.setup(app)
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(candidate_management.router, prefix="/api/candidate-management", tags=["Candidate Management"])
 app.include_router(candidates.router, prefix="/api/candidates", tags=["Candidates"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(interviews.router, prefix="/api/interviews", tags=["Interviews"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(resume.router, prefix="/api/resume", tags=["Resume"])
