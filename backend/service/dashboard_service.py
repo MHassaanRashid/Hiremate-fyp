@@ -215,7 +215,7 @@ class DashboardService:
         ]
         
         # Update or create profile strength record
-        existing_strength = supabase.table("candidate_profile_strength").select("*").eq("candidate_id", user_id).execute()
+        existing_strength = supabase.table("candidate_profile_strength").select("*").eq("user_id", user_id).execute()
         
         strength_record = {
             "candidate_id": user_id,
@@ -226,7 +226,7 @@ class DashboardService:
         }
         
         if existing_strength.data:
-            supabase.table("candidate_profile_strength").update(strength_record).eq("candidate_id", user_id).execute()
+            supabase.table("candidate_profile_strength").update(strength_record).eq("user_id", user_id).execute()
         else:
             strength_record["created_at"] = datetime.utcnow().isoformat()
             supabase.table("candidate_profile_strength").insert(strength_record).execute()
@@ -285,9 +285,9 @@ class DashboardService:
             "updated_at": datetime.utcnow().isoformat()
         }
         
-        existing = supabase.table("candidate_profile_strength").select("id").eq("candidate_id", user_id).execute()
+        existing = supabase.table("candidate_profile_strength").select("id").eq("user_id", user_id).execute()
         if existing.data:
-            supabase.table("candidate_profile_strength").update(strength_record).eq("candidate_id", user_id).execute()
+            supabase.table("candidate_profile_strength").update(strength_record).eq("user_id", user_id).execute()
         else:
             strength_record["candidate_id"] = user_id
             strength_record["user_id"] = user_id
