@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import toast from "react-hot-toast"
 
-export default function AuthCallback() {
+function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -15,12 +15,12 @@ export default function AuthCallback() {
         const hash = window.location.hash
         const role = searchParams.get("role") || "candidate"
 
-        console.log("🔹 Auth Callback - Hash:", hash)
-        console.log("🔹 Auth Callback - Role:", role)
+        // console.log("🔹 Auth Callback - Hash:", hash)
+        // console.log("🔹 Auth Callback - Role:", role)
 
         // Get current session after redirect
         const { data, error } = await supabase.auth.getSession()
-        
+
         if (error) {
           console.error("Auth error:", error)
           toast.error("Authentication failed.")
@@ -30,12 +30,12 @@ export default function AuthCallback() {
 
         if (data.session) {
           const user = data.session.user
-          console.log("✓ User authenticated:", user.id)
+          // console.log("✓ User authenticated:", user.id)
 
           // Verify email confirmed
           if (user.email_confirmed_at) {
             toast.success("Email verified successfully!")
-            
+
             // Map backend role to frontend role
             const roleMap: { [key: string]: string } = {
               "recruiter": "company",
@@ -43,11 +43,11 @@ export default function AuthCallback() {
               "interviewer": "interviewer"
             }
             const dashboardRole = roleMap[role] || role
-            
+
             // Redirect to dashboard
             setTimeout(() => {
               router.replace(`/${dashboardRole}`)
-            }, 1500)
+            }, 1000)
           } else {
             // Email not yet verified, but they clicked the link
             toast.success("Email verified! You can now log in.")
@@ -78,14 +78,15 @@ export default function AuthCallback() {
     </div>
   )
 }
-  }, [router])
 
+export default function AuthCallback() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading...</p>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800">
+        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
       </div>
-    </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   )
 }

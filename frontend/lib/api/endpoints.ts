@@ -42,3 +42,11 @@ export const SettingsEndpoints = {
   EXPORT_DATA: `${SETTINGS_API_BASE}/export-data`,
   ACCOUNT_DELETE: `${SETTINGS_API_BASE}/account`,
 };
+
+const JOBS_API_BASE = `${BACKEND_URL}/jobs`;
+
+export const JobEndpoints = {
+  LIST: `${JOBS_API_BASE}/`,
+  DETAIL: (id: string) => `${JOBS_API_BASE}/${id}`,
+  APPLY: (id: string) => `${JOBS_API_BASE}/${id}/apply`,
+};
