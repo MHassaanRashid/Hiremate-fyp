@@ -17,6 +17,7 @@ import {
   GraduationCap,
   Code,
   Eye,
+  Edit2,
 } from "lucide-react"
 
 import { useAuth } from "@/contexts/auth-context"
@@ -31,6 +32,7 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cn } from "@/lib/utils"
 
 // ---------------------------
 // Types
@@ -83,35 +85,35 @@ const ProfilePicture = ({
 
   return (
     <div className="flex items-center gap-6">
-      <div className="relative">
-        <Avatar className="h-24 w-24 border-4 border-blue-100 shadow-md shadow-blue-500/20">
+      <div className="relative group">
+        <Avatar className="h-24 w-24 border-4 border-background shadow-lg ring-2 ring-border">
           <AvatarImage src={preview || undefined} className="object-cover" />
-          <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-500 text-white text-2xl font-semibold">
+          <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
             {initials}
           </AvatarFallback>
         </Avatar>
+        <label className="absolute bottom-0 right-0 p-1.5 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors shadow-sm ring-2 ring-background">
+          <Edit2 className="w-3.5 h-3.5" />
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </label>
         {isUploading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full z-10">
             <Loader2 className="h-5 w-5 text-white animate-spin" />
           </div>
         )}
       </div>
       <div className="space-y-2">
         <div>
-          <p className="text-sm font-medium text-gray-900">Profile photo</p>
-          <p className="text-xs text-gray-500">Click to upload a professional headshot.</p>
+          <p className="text-sm font-medium text-foreground">Profile photo</p>
+          <p className="text-xs text-muted-foreground">Click the edit icon to upload.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-blue-700 cursor-pointer transition-colors">
-            <span>Upload image</span>
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </label>
-          {email && <p className="text-xs text-gray-500 truncate max-w-[200px]">Signed in as {email}</p>}
+        <div>
+          {email && <p className="text-xs text-muted-foreground truncate max-w-[200px]">Signed in as {email}</p>}
         </div>
       </div>
     </div>
@@ -129,20 +131,20 @@ const StatsStrip = ({ stats }: { stats: ProfileStats | null }) => {
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
       {items.map((item) => {
         const Icon = item.icon
         return (
           <div
             key={item.label}
-            className="rounded-xl bg-white/80 border border-blue-100 px-3 py-2 shadow-sm flex items-center gap-2"
+            className="rounded-xl bg-card border border-border px-3 py-3 shadow-sm flex items-center gap-3 hover:border-primary/50 transition-colors"
           >
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <Icon className="h-4 w-4 text-blue-600" />
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Icon className="h-4.5 w-4.5 text-primary" />
             </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-gray-500">{item.label}</p>
-              <p className="text-sm font-semibold text-gray-900">{item.value}</p>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold line-clamp-1">{item.label}</p>
+              <p className="text-sm font-bold text-foreground">{item.value}</p>
             </div>
           </div>
         )
@@ -260,19 +262,22 @@ export default function CandidateProfilePage() {
 
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-14 h-14 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">Checking your session...</p>
+      <CandidateLayout>
+        <div className="min-h-[70vh] flex flex-col gap-6 max-w-6xl mx-auto p-6 bg-muted/30">
+          <Skeleton className="h-32 w-full rounded-2xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Skeleton className="h-80 w-full rounded-2xl" />
+            <Skeleton className="h-80 w-full rounded-2xl lg:col-span-2" />
+          </div>
         </div>
-      </div>
+      </CandidateLayout>
     )
   }
 
   if (loading || !resumeData) {
     return (
       <CandidateLayout>
-        <div className="min-h-[70vh] flex flex-col gap-6 max-w-6xl mx-auto p-6">
+        <div className="min-h-[70vh] flex flex-col gap-6 max-w-6xl mx-auto p-6 bg-muted/30">
           <Skeleton className="h-32 w-full rounded-2xl" />
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <Skeleton className="h-80 w-full rounded-2xl" />
@@ -286,13 +291,13 @@ export default function CandidateProfilePage() {
   if (error) {
     return (
       <CandidateLayout>
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="text-center max-w-md">
-            <p className="text-red-600 mb-3 font-medium">{error}</p>
-            <p className="text-sm text-gray-500 mb-4">
+        <div className="min-h-[60vh] flex items-center justify-center bg-muted/30">
+          <div className="text-center max-w-md p-6 rounded-xl border border-border bg-card shadow-sm">
+            <p className="text-red-500 mb-3 font-medium">{error}</p>
+            <p className="text-sm text-muted-foreground mb-4">
               Try refreshing the page. If the problem persists, please sign out and sign in again.
             </p>
-            <Button onClick={() => window.location.reload()} className="bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => window.location.reload()} variant="outline">
               Retry loading profile
             </Button>
           </div>
@@ -314,51 +319,52 @@ export default function CandidateProfilePage() {
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <div className="max-w-5xl lg:max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="min-h-screen bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
           {/* Header */}
-          <Card className="border border-blue-100/70 bg-white/90 backdrop-blur-xl shadow-lg shadow-blue-100">
-            <CardContent className="p-4 sm:p-6 flex flex-col gap-6">
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <Card className="border border-border bg-card shadow-sm overflow-hidden">
+            <div className="h-32 bg-gradient-to-r from-primary/10 to-primary/5 border-b border-border/50" />
+            <CardContent className="px-6 pb-6 -mt-12 flex flex-col gap-6 relative">
+              <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
                 {/* Left: photo + basic info */}
-                <div className="flex-1 space-y-4 text-center md:text-left">
+                <div className="flex-1 space-y-4 text-center md:text-left pt-2 md:pt-0">
                   <div className="flex justify-center md:justify-start">
                     <ProfilePicture name={personalInfo.fullName || ""} email={personalInfo.email} />
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 justify-center md:justify-start">
-                      <h1 className="text-2xl md:text-3xl font-semibold text-gray-900">
+                  <div className="space-y-2 mt-2">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 justify-center md:justify-start">
+                      <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                         {personalInfo.fullName || "Your profile"}
                       </h1>
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 flex items-center gap-1 w-max mx-auto md:mx-0">
+                      <Badge className="bg-primary/10 text-primary border-primary/20 hover:bg-primary/20 transition-colors flex items-center gap-1.5 w-max mx-auto md:mx-0 px-2.5 py-0.5 text-xs font-semibold">
                         <Sparkles className="h-3 w-3" />
-                        Candidate profile
+                        Candidate
                       </Badge>
                     </div>
                     {personalInfo.summary && (
-                      <p className="text-sm text-gray-600 max-w-xl mx-auto md:mx-0 line-clamp-2">
+                      <p className="text-sm text-muted-foreground max-w-2xl mx-auto md:mx-0 line-clamp-2 leading-relaxed">
                         {personalInfo.summary}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-xs text-gray-500">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground pt-1">
                     {personalInfo.email && (
-                      <span className="inline-flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
+                        <Mail className="h-3.5 w-3.5 text-primary/70" />
                         <span className="truncate max-w-[180px] sm:max-w-xs">{personalInfo.email}</span>
                       </span>
                     )}
                     {personalInfo.phone && (
-                      <span className="inline-flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
+                        <Phone className="h-3.5 w-3.5 text-primary/70" />
                         <span>{personalInfo.phone}</span>
                       </span>
                     )}
                     {personalInfo.location && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
+                        <MapPin className="h-3.5 w-3.5 text-primary/70" />
                         <span className="truncate max-w-[160px] sm:max-w-xs">{personalInfo.location}</span>
                       </span>
                     )}
@@ -366,39 +372,51 @@ export default function CandidateProfilePage() {
                 </div>
 
                 {/* Right: completion + stats */}
-                <div className="w-full md:w-72 space-y-4">
-                  <div className="rounded-2xl border border-blue-100 bg-blue-50/70 px-4 py-3 flex items-center gap-4">
-                    <div className="relative h-16 w-16 flex-shrink-0">
-                      <svg className="h-16 w-16 -rotate-90" viewBox="0 0 36 36">
-                        <path
-                          d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#DBEAFE"
-                          strokeWidth={3}
-                        />
-                        <path
-                          d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
-                          fill="none"
-                          stroke="#3B82F6"
-                          strokeWidth={3}
-                          strokeLinecap="round"
-                          strokeDasharray={`${profileCompletion}, 100`}
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-sm font-semibold text-blue-700">
-                          {profileCompletion}%
-                        </span>
+                <div className="w-full md:w-80 space-y-4 pt-4 md:pt-12">
+                  <div className="flex flex-col gap-3">
+                    <Button
+                      className="w-full shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+                      onClick={() => window.location.href = '/candidate/resume'}
+                    >
+                      <Edit2 className="w-4 h-4 mr-2" />
+                      Edit Profile
+                    </Button>
+
+                    <div className="rounded-xl border border-border bg-muted/50 px-5 py-4 flex items-center gap-4">
+                      <div className="relative h-14 w-14 flex-shrink-0">
+                        <svg className="h-14 w-14 -rotate-90" viewBox="0 0 36 36">
+                          <path
+                            d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={3}
+                            className="text-muted"
+                          />
+                          <path
+                            d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831a 15.9155 15.9155 0 0 1 0 -31.831"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={3}
+                            strokeLinecap="round"
+                            strokeDasharray={`${profileCompletion}, 100`}
+                            className="text-primary"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-xs font-bold text-primary">
+                            {profileCompletion}%
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold text-blue-900 flex items-center gap-1">
-                        Profile completeness
-                      </p>
-                      <p className="text-xs text-blue-800">{completionLabel}</p>
-                      <p className="text-[11px] text-blue-900/80">
-                        Complete your experience, education and skills to stand out.
-                      </p>
+                      <div className="space-y-0.5">
+                        <p className="text-xs font-medium text-foreground">
+                          Profile Completeness
+                        </p>
+                        <p className="text-xs font-bold text-primary">{completionLabel}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Detailed profiles get 2x more views
+                        </p>
+                      </div>
                     </div>
                   </div>
 
@@ -412,211 +430,217 @@ export default function CandidateProfilePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
             {/* Left column: personal info + social links */}
             <div className="space-y-6 lg:col-span-1">
-              {/* Personal info */}
-              <Card className="border border-blue-100 bg-white/90 backdrop-blur-xl shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
-                      <Mail className="h-3.5 w-3.5 text-blue-600" />
-                    </span>
-                    Personal information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0 space-y-2 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-blue-500" />
-                    <span>{personalInfo.email || "Not provided"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-blue-500" />
-                    <span>{personalInfo.phone || "Not provided"}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-blue-500" />
-                    <span>{personalInfo.location || "Not provided"}</span>
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Social links */}
-              <Card className="border border-blue-100 bg-white/90 backdrop-blur-xl shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
-                      <Globe className="h-3.5 w-3.5 text-blue-600" />
+              {/* Online Presence */}
+              <Card className="border border-border bg-card shadow-sm">
+                <CardHeader className="pb-3 border-b border-border/50">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Globe className="h-4 w-4 text-primary" />
                     </span>
-                    Online presence
+                    Online Presence
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0 space-y-2 text-sm text-gray-700">
+                <CardContent className="pt-4 space-y-3 text-sm">
                   {personalInfo.website && (
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-4 w-4 text-blue-500" />
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <Globe className="h-4 w-4 text-muted-foreground" />
                       <a
                         href={personalInfo.website}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 hover:underline break-all"
+                        className="text-primary hover:underline break-all font-medium"
                       >
-                        {personalInfo.website}
+                        Portfolio Website
                       </a>
                     </div>
                   )}
                   {personalInfo.linkedin && (
-                    <div className="flex items-center gap-2">
-                      <Linkedin className="h-4 w-4 text-blue-500" />
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <Linkedin className="h-4 w-4 text-muted-foreground" />
                       <a
                         href={personalInfo.linkedin}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 hover:underline break-all"
+                        className="text-primary hover:underline break-all font-medium"
                       >
-                        {personalInfo.linkedin}
+                        LinkedIn Profile
                       </a>
                     </div>
                   )}
                   {personalInfo.github && (
-                    <div className="flex items-center gap-2">
-                      <Github className="h-4 w-4 text-gray-800" />
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <Github className="h-4 w-4 text-muted-foreground" />
                       <a
                         href={personalInfo.github}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 hover:underline break-all"
+                        className="text-primary hover:underline break-all font-medium"
                       >
-                        {personalInfo.github}
+                        GitHub Profile
                       </a>
                     </div>
                   )}
                   {!personalInfo.website && !personalInfo.linkedin && !personalInfo.github && (
-                    <p className="text-xs text-gray-500">No social links added yet.</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right column: summary, skills, experience, education */}
-            <div className="space-y-6 lg:col-span-2">
-              {/* Summary */}
-              <Card className="border border-blue-100 bg-white/90 backdrop-blur-xl shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
-                      <Target className="h-3.5 w-3.5 text-blue-600" />
-                    </span>
-                    Professional summary
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {personalInfo.summary ? (
-                    <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                      {personalInfo.summary}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-gray-400">No summary added yet.</p>
+                    <div className="text-center py-6">
+                      <Globe className="h-8 w-8 text-muted mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground">No social links added yet.</p>
+                      <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1">Add Links</Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Skills */}
-              <Card className="border border-blue-100 bg-white/90 backdrop-blur-xl shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
-                      <Code className="h-3.5 w-3.5 text-blue-600" />
+              <Card className="border border-border bg-card shadow-sm">
+                <CardHeader className="pb-3 border-b border-border/50">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Code className="h-4 w-4 text-primary" />
                     </span>
-                    Skills & expertise
+                    Skills & Expertise
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0 space-y-3">
+                <CardContent className="pt-4 space-y-4">
                   {skills && skills.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-4">
                       {skills.map((skill, idx) => (
-                        <div key={`${skill.name}-${idx}`} className="space-y-1">
+                        <div key={`${skill.name}-${idx}`} className="space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-medium text-gray-800">{skill.name}</span>
-                            <span className="text-gray-500">
+                            <span className="font-medium text-foreground">{skill.name}</span>
+                            <span className="text-muted-foreground">
                               {skill.level >= 4 ? "Advanced" : skill.level === 3 ? "Intermediate" : "Beginner"}
                             </span>
                           </div>
-                          <Progress value={(skill.level / 5) * 100} className="h-1.5 bg-blue-50" />
+                          <Progress value={(skill.level / 5) * 100} className="h-1.5" />
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-400">No skills added yet.</p>
+                    <div className="text-center py-6">
+                      <Code className="h-8 w-8 text-muted mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No skills added yet.</p>
+                      <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1">Add Skills</Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right column: summary, experience, education */}
+            <div className="space-y-6 lg:col-span-2">
+              {/* Summary */}
+              <Card className="border border-border bg-card shadow-sm">
+                <CardHeader className="pb-3 border-b border-border/50">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Target className="h-4 w-4 text-primary" />
+                    </span>
+                    Professional Summary
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  {personalInfo.summary ? (
+                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                      {personalInfo.summary}
+                    </p>
+                  ) : (
+                    <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                      <p className="text-sm text-muted-foreground">No summary added yet.</p>
+                      <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1">Add Summary</Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Experience */}
-              <Card className="border border-blue-100 bg-white/90 backdrop-blur-xl shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
-                      <Briefcase className="h-3.5 w-3.5 text-blue-600" />
+              <Card className="border border-border bg-card shadow-sm">
+                <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <Briefcase className="h-4 w-4 text-primary" />
                     </span>
-                    Work experience
+                    Work Experience
                   </CardTitle>
+                  {experience.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] font-medium">{experience.length} Positions</Badge>
+                  )}
                 </CardHeader>
-                <CardContent className="pt-0 space-y-4">
+                <CardContent className="pt-4 space-y-6">
                   {experience && experience.length > 0 ? (
-                    experience.map((exp) => (
-                      <div key={exp.id} className="border-l-2 border-blue-100 pl-4">
-                        <div className="flex items-center justify-between">
+                    experience.map((exp, idx) => (
+                      <div key={exp.id || idx} className="border-l-2 border-primary/20 pl-4 py-1 relative group">
+                        <div className="absolute -left-[5px] top-2 h-2.5 w-2.5 rounded-full bg-primary ring-4 ring-background" />
+                        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-1 mb-2">
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">{exp.position}</p>
-                            <p className="text-xs text-blue-600">{exp.company}</p>
+                            <h3 className="text-sm font-bold text-foreground">{exp.position}</h3>
+                            <p className="text-xs font-semibold text-primary">{exp.company}</p>
                           </div>
-                          <div className="text-[11px] text-gray-500 text-right">
-                            <p>
-                              {exp.startDate} {exp.endDate ? `- ${exp.endDate}` : exp.current ? "- Present" : ""}
-                            </p>
-                            {exp.location && <p>{exp.location}</p>}
+                          <div className="text-xs text-muted-foreground whitespace-nowrap bg-muted/50 px-2 py-1 rounded">
+                            {exp.startDate} {exp.endDate ? `- ${exp.endDate}` : exp.current ? "- Present" : ""}
                           </div>
                         </div>
+                        {exp.location && (
+                          <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                            <MapPin className="w-3 h-3" /> {exp.location}
+                          </p>
+                        )}
                         {exp.description && (
-                          <p className="mt-2 text-xs text-gray-700 leading-relaxed">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
                             {exp.description}
                           </p>
                         )}
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-400">No work experience added yet.</p>
+                    <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                      <Briefcase className="h-8 w-8 text-muted mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No work experience added yet.</p>
+                      <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1">Add Experience</Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Education */}
-              <Card className="border border-blue-100 bg-white/90 backdrop-blur-xl shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                    <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
-                      <GraduationCap className="h-3.5 w-3.5 text-blue-600" />
+              <Card className="border border-border bg-card shadow-sm">
+                <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                      <GraduationCap className="h-4 w-4 text-primary" />
                     </span>
                     Education
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-0 space-y-4">
+                <CardContent className="pt-4 space-y-4">
                   {education && education.length > 0 ? (
-                    education.map((edu) => (
-                      <div key={edu.id} className="border rounded-lg border-blue-50 bg-blue-50/40 p-3">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {edu.degree} {edu.field ? `in ${edu.field}` : ""}
-                        </p>
-                        <p className="text-xs text-blue-700">{edu.institution}</p>
-                        <p className="text-[11px] text-gray-500 mt-1">
+                    education.map((edu, idx) => (
+                      <div key={edu.id || idx} className="border border-border rounded-xl bg-muted/10 p-4 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <h3 className="text-sm font-bold text-foreground">
+                              {edu.degree} {edu.field ? `in ${edu.field}` : ""}
+                            </h3>
+                            <p className="text-xs font-medium text-primary mt-0.5">{edu.institution}</p>
+                          </div>
+                          {edu.gpa && (
+                            <Badge variant="outline" className="text-[10px] shrink-0">GPA: {edu.gpa}</Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-3 text-xs text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5" />
                           {edu.startDate}
                           {edu.graduationYear ? ` - ${edu.graduationYear}` : edu.current ? " - Present" : ""}
-                        </p>
-                        {edu.gpa && (
-                          <p className="text-[11px] text-gray-600 mt-1">GPA: {edu.gpa}</p>
-                        )}
+                        </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-gray-400">No education added yet.</p>
+                    <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
+                      <GraduationCap className="h-8 w-8 text-muted mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">No education added yet.</p>
+                      <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1">Add Education</Button>
+                    </div>
                   )}
                 </CardContent>
               </Card>

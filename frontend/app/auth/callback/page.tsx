@@ -1,11 +1,14 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import toast from "react-hot-toast"
+import { Loader2 } from "lucide-react"
 
-export default function AuthCallback() {
+export const dynamic = "force-dynamic";
+
+function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -20,7 +23,7 @@ export default function AuthCallback() {
 
         // Get current session after redirect
         const { data, error } = await supabase.auth.getSession()
-        
+
         if (error) {
           console.error("Auth error:", error)
           toast.error("Authentication failed.")
@@ -35,7 +38,7 @@ export default function AuthCallback() {
           // Verify email confirmed
           if (user.email_confirmed_at) {
             toast.success("Email verified successfully!")
-            
+
             // Map backend role to frontend role
             const roleMap: { [key: string]: string } = {
               "recruiter": "company",
@@ -43,7 +46,7 @@ export default function AuthCallback() {
               "interviewer": "interviewer"
             }
             const dashboardRole = roleMap[role] || role
-            
+
             // Redirect to dashboard
             setTimeout(() => {
               router.replace(`/${dashboardRole}`)
@@ -70,22 +73,24 @@ export default function AuthCallback() {
   }, [router, searchParams])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30">
       <div className="text-center">
-        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-white text-lg">Verifying your email...</p>
+        <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+        <h2 className="text-lg font-semibold text-foreground">Verifying your email...</h2>
+        <p className="text-sm text-muted-foreground mt-1">Please wait while we redirect you.</p>
       </div>
     </div>
   )
 }
-  }, [router])
 
+export default function AuthCallback() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto"></div>
-        <p className="mt-4 text-gray-600">Loading...</p>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
       </div>
-    </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   )
 }

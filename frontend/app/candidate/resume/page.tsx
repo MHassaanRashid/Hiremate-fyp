@@ -21,6 +21,7 @@ import { saveResume, getUserResume, saveResumeSection, getResumeSection } from "
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import toast from "react-hot-toast"
+import { cn } from "@/lib/utils"
 
 // Import the resume components
 import {
@@ -80,7 +81,7 @@ export default function ResumeBuilderPage() {
     projects: [],
     skills: [],
     certificates: [],
-    
+
   })
 
   // Ref to prevent duplicate API calls
@@ -116,7 +117,7 @@ export default function ResumeBuilderPage() {
     const hasExperience = Array.isArray(data.experience) && data.experience.length > 0
     const hasEducation = Array.isArray(data.education) && data.education.length > 0
     const hasSkills = Array.isArray(data.skills) && data.skills.length > 0
-    
+
     return hasPersonalInfo && hasExperience && hasEducation && hasSkills
   }, [])
 
@@ -160,7 +161,7 @@ export default function ResumeBuilderPage() {
             }
             setResumeData(loadedData)
             setMode('edit') // User has existing resume
-            
+
             // Check completion status and mark sections
             const sections = ['personalInfo', 'experience', 'education', 'skills', 'projects', 'certificates']
             const completions: { [key: string]: boolean } = {}
@@ -347,7 +348,7 @@ export default function ResumeBuilderPage() {
           skills: resumeData.skills,
           projects: resumeData.projects,
           certificates: resumeData.certificates,
-          
+
         }
       }
 
@@ -422,7 +423,7 @@ export default function ResumeBuilderPage() {
       try {
         setAutoSaving(true)
         await saveResumeSection(token, section as string, data)
-        
+
         // Mark section as completed if it has meaningful data
         const isCompleted = checkSectionCompletion(section as string, data)
         setSectionCompletions(prev => ({ ...prev, [section]: isCompleted }))
@@ -555,163 +556,227 @@ export default function ResumeBuilderPage() {
   };
 
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-t-4 border-blue-500 rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your resume builder...</p>
+  // Render content or loader
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="flex-1 min-w-0 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="w-10 h-10 border-t-4 border-primary rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-muted-foreground font-medium">Loading your resume data...</p>
+          </div>
         </div>
+      )
+    }
+
+    return (
+      <div className="flex-1 min-w-0">
+        <Card className="bg-card border-border shadow-sm overflow-hidden min-h-[500px] flex flex-col">
+          <CardHeader className="bg-muted/30 border-b border-border py-4 px-6 md:px-8">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-background flex items-center justify-center shadow-sm border border-border">
+                {(() => {
+                  const StepIcon = STEPS[currentStep - 1]?.icon || FileText
+                  return <StepIcon className="w-5 h-5 text-primary" />
+                })()}
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold">{STEPS[currentStep - 1]?.title}</CardTitle>
+                <p className="text-sm text-muted-foreground">{STEPS[currentStep - 1]?.description}</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6 md:p-8 flex-1">
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+              {renderCurrentStep()}
+            </div>
+          </CardContent>
+
+          {/* Footer / Navigation */}
+          <div className="bg-muted/30 border-t border-border p-4 md:p-6 flex justify-between items-center gap-4">
+            <Button
+              variant="outline"
+              onClick={prevStep}
+              disabled={currentStep === 1}
+              className="gap-2 shadow-sm"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Previous
+            </Button>
+
+            {currentStep === STEPS.length ? (
+              <Button
+                onClick={saveAndContinue}
+                disabled={saving}
+                className="gap-2 shadow-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <Save className="w-4 h-4" />
+                {saving ? 'Saving...' : 'Finish & Go to Dashboard'}
+              </Button>
+            ) : (
+              <Button
+                onClick={nextStep}
+                disabled={currentStep === STEPS.length || saving || autoSaving}
+                className="gap-2 shadow-sm"
+              >
+                {autoSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent"></div>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    Save & Next
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-green-300/15 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
+    <div className="min-h-screen bg-muted/30 relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
 
       {/* Header */}
-      <div className="relative z-10 bg-white/80 backdrop-blur-xl border-b border-blue-200/50 px-6 py-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="relative z-10 bg-background/80 backdrop-blur-xl border-b border-border shadow-sm px-6 py-4 sticky top-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <FileText className="text-white w-5 h-5" />
+            <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary shadow-sm ring-1 ring-primary/20">
+              <FileText className="w-5 h-5" />
             </div>
-            <div className="ml-4">
-              <h1 className="text-2xl font-bold text-gray-800">Resume Builder</h1>
-              <p className="text-gray-600">Create your professional resume step by step</p>
+            <div className="ml-4 hidden sm:block">
+              <h1 className="text-xl font-bold text-foreground">Resume Builder</h1>
+              <p className="text-sm text-muted-foreground">Create your professional resume</p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3 md:space-x-4">
             {autoSaving && (
-              <div className="flex items-center space-x-2 text-blue-600">
-                <div className="w-3 h-3 border-2 border-blue-600 rounded-full animate-spin border-t-transparent"></div>
-                <span className="text-sm">Auto-saving...</span>
+              <div className="flex items-center space-x-2 text-primary/80 hidden sm:flex">
+                <div className="w-3.5 h-3.5 border-2 border-primary/50 rounded-full animate-spin border-t-transparent"></div>
+                <span className="text-xs font-medium">Auto-saving...</span>
               </div>
             )}
-            <span className="text-sm text-gray-600">
-              Step {currentStep} of {STEPS.length}
-            </span>
-            <Progress value={(currentStep / STEPS.length) * 100} className="w-32" />
+
+            <div className="flex flex-col items-end mr-2">
+              <span className="text-xs font-semibold text-foreground">
+                Step {currentStep} of {STEPS.length}
+              </span>
+              <Progress value={(currentStep / STEPS.length) * 100} className="w-24 h-1.5 mt-1" />
+            </div>
+
             <Button
               onClick={saveResumeData}
               disabled={saving}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-purple-700"
+              variant="outline"
+              size="sm"
+              className="hidden md:flex gap-2"
             >
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Saving...' : 'Save All'}
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : 'Save Draft'}
+            </Button>
+
+            <div className="h-6 w-px bg-border hidden md:block" />
+
+            <Button
+              onClick={() => router.push('/candidate')}
+              variant="ghost"
+              size="sm"
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <span className="hidden sm:inline">Back to Dashboard</span>
+              <X className="w-4 h-4" />
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Progress Steps */}
-      <div className="relative z-10 bg-white/60 backdrop-blur-sm border-b border-blue-200/50">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {STEPS.map((step, index) => {
-              const Icon = step.icon
-              const isCompleted = currentStep > step.id
-              const isCurrent = currentStep === step.id
-              const isClickable = index === 0 || currentStep > index
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 flex flex-col md:flex-row gap-8 relative z-10">
 
-              // Check if this step's section is completed via auto-save
-              const sectionKey = getSectionKey(step.id)
-              const isSectionCompleted = sectionKey ? sectionCompletions[sectionKey] : false
+        {/* Sidebar Steps (Desktop) */}
+        <div className="hidden md:block w-64 flex-shrink-0 space-y-2 sticky top-24 self-start">
+          {STEPS.map((step, index) => {
+            const Icon = step.icon
+            const isCompleted = currentStep > step.id
+            const isCurrent = currentStep === step.id
+            const isClickable = index === 0 || currentStep > index
+            const sectionKey = getSectionKey(step.id)
+            const isSectionCompleted = sectionKey ? sectionCompletions[sectionKey] : false
 
-              return (
-                <div key={step.id} className="flex items-center">
-                  <div
-                    className={`flex flex-col items-center cursor-pointer transition-all duration-300 ${isClickable ? 'hover:scale-105' : 'cursor-not-allowed opacity-50'
-                      }`}
-                    onClick={() => isClickable && goToStep(step.id)}
-                  >
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 relative ${isCompleted || isSectionCompleted ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' :
-                        isCurrent ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30' :
-                          'bg-gray-200 text-gray-500'
-                      }`}>
-                      {(isCompleted || isSectionCompleted) ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                      {isSectionCompleted && !isCompleted && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                      )}
-                    </div>
-                    <div className="mt-2 text-center">
-                      <p className={`text-xs font-medium ${isCompleted || isCurrent || isSectionCompleted ? 'text-gray-800' : 'text-gray-500'
-                        }`}>
-                        {step.title}
-                      </p>
-                      {isSectionCompleted && !isCompleted && (
-                        <div className="text-xs text-green-600 mt-1">✓ Saved</div>
-                      )}
-                    </div>
-                  </div>
-                  {index < STEPS.length - 1 && (
-                    <div className={`flex-1 h-px mx-4 transition-all duration-500 ${isCompleted || isSectionCompleted ? 'bg-green-500' : 'bg-gray-300'
-                      }`} />
-                  )}
+            return (
+              <div
+                key={step.id}
+                onClick={() => isClickable && goToStep(step.id)}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 border",
+                  isCurrent
+                    ? "bg-card border-primary ring-1 ring-primary shadow-sm"
+                    : "border-transparent hover:bg-black/5 dark:hover:bg-white/5",
+                  !isClickable && "opacity-50 cursor-not-allowed",
+                  isClickable && !isCurrent && "cursor-pointer"
+                )}
+              >
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm",
+                  isCurrent ? "bg-primary text-primary-foreground" :
+                    (isCompleted || isSectionCompleted) ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+                )}>
+                  {(isCompleted || isSectionCompleted) && !isCurrent ? <CheckCircle className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                 </div>
-              )
-            })}
-          </div>
+                <div>
+                  <p className={cn("text-sm font-semibold", isCurrent ? "text-foreground" : "text-muted-foreground")}>{step.title}</p>
+                  {isCurrent && <p className="text-[10px] text-primary font-medium">Editing now</p>}
+                </div>
+              </div>
+            )
+          })}
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="relative z-10 max-w-4xl mx-auto p-6">
-        <Card className="bg-white/80 backdrop-blur-xl border-blue-200/50 shadow-xl">
-          <CardContent className="p-8">
-            {renderCurrentStep()}
-          </CardContent>
-        </Card>
+        {/* Mobile Steps Indicator */}
+        <div className="md:hidden sticky top-[72px] z-10 bg-background/95 backdrop-blur border-b border-border -mx-4 px-4 py-3 overflow-x-auto scrollbar-hide flex gap-3 shadow-sm">
+          {STEPS.map((step, index) => {
+            const Icon = step.icon
+            const isCurrent = currentStep === step.id
+            const isClickable = index === 0 || currentStep > index
+            const isCompleted = currentStep > step.id
 
-        {/* Navigation */}
-        <div className="flex justify-between mt-8">
-          <Button
-            variant="outline"
-            onClick={prevStep}
-            disabled={currentStep === 1}
-            className="border-blue-300 text-blue-700 hover:bg-blue-50"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-
-          {/* Show Save and Continue button on last step, otherwise show Save & Next button */}
-          {currentStep === STEPS.length ? (
-            <Button
-              onClick={saveAndContinue}
-              disabled={saving}
-              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Saving...' : 'Save and Continue to Dashboard'}
-            </Button>
-          ) : (
-            <Button
-              onClick={nextStep}
-              disabled={currentStep === STEPS.length || saving || autoSaving}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-purple-700"
-            >
-              {autoSaving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent mr-2"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save & Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              )}
-            </Button>
-          )}
+            return (
+              <div
+                key={step.id}
+                onClick={() => isClickable && goToStep(step.id)}
+                className={cn(
+                  "flex flex-col items-center justify-center min-w-[64px] transition-all",
+                  !isClickable && "opacity-40"
+                )}
+              >
+                <div className={cn(
+                  "w-9 h-9 rounded-full flex items-center justify-center mb-1.5 transition-all ring-offset-2 ring-offset-background",
+                  isCurrent
+                    ? "bg-primary text-primary-foreground ring-2 ring-primary scale-110"
+                    : isCompleted
+                      ? "bg-primary/20 text-primary"
+                      : "bg-muted text-muted-foreground"
+                )}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <span className={cn(
+                  "text-[10px] font-medium text-center whitespace-nowrap",
+                  isCurrent ? "text-primary font-bold" : "text-muted-foreground"
+                )}>
+                  {step.title}
+                </span>
+              </div>
+            )
+          })}
         </div>
+
+        {/* Main Content Area */}
+        {renderContent()}
       </div>
     </div>
   )

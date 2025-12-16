@@ -30,6 +30,8 @@ import {
   Clock,
   ArrowUpRight,
   FileDown,
+  MapPin,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 
@@ -258,36 +260,60 @@ export default function CandidateApplicationsPage() {
   // Authentication guard
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-14 h-14 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">Loading your applications...</p>
+      <CandidateLayout>
+        <div className="min-h-screen bg-muted/30">
+          <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-48" />
+                <Skeleton className="h-4 w-96" />
+              </div>
+              <div className="flex gap-3">
+                <Skeleton className="h-10 w-24 rounded-full" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="rounded-xl bg-card border border-border shadow-sm p-5 flex items-center justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-8 w-16" />
+                  </div>
+                  <Skeleton className="h-12 w-12 rounded-xl" />
+                </div>
+              ))}
+            </section>
+
+            <ApplicationsSkeleton />
+          </div>
         </div>
-      </div>
+      </CandidateLayout>
     );
   }
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="min-h-screen bg-muted/30">
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
           {/* Header */}
           <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Applications</h1>
-              <p className="mt-1 text-sm text-gray-600">
+              <h1 className="text-3xl font-bold text-foreground">My Applications</h1>
+              <p className="mt-1 text-muted-foreground">
                 Track your job applications, stay on top of next steps, and manage your pipeline.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">
-                  <Briefcase className="w-4 h-4 mr-1" />
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary font-medium border border-primary/20">
+                  <Briefcase className="w-4 h-4 mr-1.5" />
                   {total} applications
                 </span>
               </div>
               <Link href="/homepage" className="w-full sm:w-auto">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 shadow-md shadow-blue-500/30">
+                <Button className="w-full sm:w-auto gap-2 shadow-sm">
                   Find New Jobs
                   <ArrowUpRight className="w-4 h-4" />
                 </Button>
@@ -297,37 +323,37 @@ export default function CandidateApplicationsPage() {
 
           {/* Stats overview */}
           <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 flex items-center justify-between">
+            <div className="rounded-xl bg-card border border-border shadow-sm p-5 flex items-center justify-between hover:shadow-md transition-shadow">
               <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500">Total Applications</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{total}</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Applications</p>
+                <p className="mt-1 text-3xl font-bold text-foreground">{total}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-blue-600" />
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Briefcase className="w-6 h-6 text-primary" />
               </div>
             </div>
-            <div className="rounded-2xl bg-white/90 border border-emerald-100 shadow-sm p-4 flex items-center justify-between">
+            <div className="rounded-xl bg-card border border-border shadow-sm p-5 flex items-center justify-between hover:shadow-md transition-shadow">
               <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500">In Progress</p>
-                <p className="mt-1 text-2xl font-semibold text-emerald-700">{inProgressCount}</p>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">In Progress</p>
+                <p className="mt-1 text-3xl font-bold text-emerald-600 dark:text-emerald-400">{inProgressCount}</p>
               </div>
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-emerald-600" />
+              <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
+                <Clock className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
             </div>
-            <div className="rounded-2xl bg-white/90 border border-slate-100 shadow-sm p-4 flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Accepted</p>
-                  <p className="text-sm font-semibold text-green-600">{acceptedCount}</p>
+            <div className="rounded-xl bg-card border border-border shadow-sm p-5 flex items-center justify-between hover:shadow-md transition-shadow">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Accepted</p>
+                  <p className="text-base font-bold text-green-600 dark:text-green-400">{acceptedCount}</p>
                 </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Rejected</p>
-                  <p className="text-sm font-semibold text-red-600">{rejectedCount}</p>
+                <div className="flex items-center justify-between gap-4">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Rejected</p>
+                  <p className="text-base font-bold text-red-600 dark:text-red-400">{rejectedCount}</p>
                 </div>
               </div>
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-slate-500" />
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-muted-foreground" />
               </div>
             </div>
           </section>
@@ -366,14 +392,14 @@ export default function CandidateApplicationsPage() {
                     setSort(e.target.value as "newest" | "oldest");
                     setPage(1);
                   }}
-                  className="h-9 rounded-lg border border-blue-100 bg-white/90 px-3 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="h-9 w-full rounded-md border border-input bg-background/50 px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/20"
                   aria-label="Sort applications"
                 >
                   <option value="newest">Newest first</option>
                   <option value="oldest">Oldest first</option>
                 </select>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <span>Applied from</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 p-1 rounded-md border border-border">
+                  <span className="pl-1">Applied:</span>
                   <Input
                     type="date"
                     value={dateFrom}
@@ -381,7 +407,7 @@ export default function CandidateApplicationsPage() {
                       setDateFrom(e.target.value);
                       setPage(1);
                     }}
-                    className="h-8 w-32 border-blue-100 bg-white/90 text-xs"
+                    className="h-7 w-28 border-border bg-background text-xs"
                   />
                   <span>to</span>
                   <Input
@@ -391,7 +417,7 @@ export default function CandidateApplicationsPage() {
                       setDateTo(e.target.value);
                       setPage(1);
                     }}
-                    className="h-8 w-32 border-blue-100 bg-white/90 text-xs"
+                    className="h-7 w-28 border-border bg-background text-xs"
                   />
                 </div>
                 {hasActiveFilters && (
@@ -399,17 +425,17 @@ export default function CandidateApplicationsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={clearFilters}
-                    className="h-9 text-xs text-gray-600 hover:text-gray-800"
+                    className="h-9 text-xs text-muted-foreground hover:text-foreground"
                   >
-                    <X className="w-3 h-3 mr-1" />
-                    Clear filters
+                    <X className="w-3.5 h-3.5 mr-1" />
+                    Clear text
                   </Button>
                 )}
               </div>
             </div>
 
             {/* Status filter chips */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-1">
               {STATUS_FILTERS.map((f) => (
                 <button
                   key={f.value}
@@ -418,10 +444,10 @@ export default function CandidateApplicationsPage() {
                     setPage(1);
                   }}
                   className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors flex items-center gap-1",
+                    "px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 hover:shadow-sm",
                     activeStatus === f.value
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/30"
-                      : f.color || "bg-white/80 text-gray-600 border-blue-100 hover:bg-blue-50"
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm ring-2 ring-primary/20"
+                      : f.color || "bg-card text-muted-foreground border-border hover:bg-muted/50 hover:border-primary/20"
                   )}
                   aria-pressed={activeStatus === f.value}
                 >
@@ -507,7 +533,7 @@ export default function CandidateApplicationsPage() {
             ) : applications.length === 0 ? (
               <EmptyApplicationsState />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {applications.map((app) => {
                   const pipelineIndex = PIPELINE_STAGES.findIndex(
                     (s) => s.key === app.pipelineStage
@@ -515,48 +541,52 @@ export default function CandidateApplicationsPage() {
                   return (
                     <article
                       key={app.id}
-                      className="rounded-2xl bg-white/95 border border-blue-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+                      className="rounded-xl bg-card border border-border shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group"
                     >
-                      <div className="flex flex-col gap-3 p-4 md:p-5">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="flex flex-1 gap-3">
+                      <div className="flex flex-col gap-4 p-5">
+                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <div className="flex flex-1 gap-4">
                             <div className="flex-shrink-0">
-                              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700 font-semibold">
+                              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
                                 {app.company?.charAt(0) || "?"}
                               </div>
                             </div>
-                            <div className="space-y-1">
-                              <h2 className="text-sm md:text-base font-semibold text-gray-900 flex items-center gap-2">
+                            <div className="space-y-1.5">
+                              <h2 className="text-base md:text-lg font-bold text-foreground flex items-center gap-2 flex-wrap">
                                 <span>{app.jobTitle}</span>
                                 <Badge className={getStatusBadgeClasses(app.status)}>
                                   {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
                                 </Badge>
                               </h2>
-                              <p className="text-xs text-gray-600 flex items-center gap-1">
-                                <Building2 className="w-3 h-3" />
+                              <p className="text-sm text-muted-foreground flex items-center gap-1.5 font-medium">
+                                <Building2 className="w-3.5 h-3.5" />
                                 {app.company}
                               </p>
-                              <div className="flex flex-wrap gap-3 text-[11px] text-gray-500">
-                                <span className="inline-flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
+                              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground pt-1">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 opacity-70" />
                                   Applied {formatDate(app.appliedDate)}
                                 </span>
                                 {app.lastUpdatedAt && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Clock className="w-3.5 h-3.5 opacity-70" />
                                     Updated {formatRelativeDate(app.lastUpdatedAt)}
                                   </span>
                                 )}
-                                {app.location && <span>{app.location}</span>}
-                                {app.employmentType && <span>{app.employmentType}</span>}
+                                {app.location && (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <MapPin className="w-3.5 h-3.5 opacity-70" />
+                                    {app.location}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-start gap-3 md:gap-4">
-                            <label className="mt-1 inline-flex items-center gap-2 text-xs text-gray-500">
+                          <div className="flex items-start gap-3 md:gap-4 pl-12 md:pl-0">
+                            <label className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors">
                               <input
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                                className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
                                 checked={selectedIds.has(app.id)}
                                 onChange={() => toggleSelectOne(app.id)}
                                 aria-label={`Select application for ${app.jobTitle} at ${app.company}`}
@@ -567,13 +597,13 @@ export default function CandidateApplicationsPage() {
                               onClick={() =>
                                 setExpandedId((prev) => (prev === app.id ? null : app.id))
                               }
-                              className="inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900"
+                              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors bg-primary/5 hover:bg-primary/10 px-3 py-1.5 rounded-full"
                               aria-expanded={expandedId === app.id}
                             >
-                              View details
+                              Details
                               <ChevronDown
                                 className={cn(
-                                  "w-3 h-3 transition-transform",
+                                  "w-3.5 h-3.5 transition-transform duration-200",
                                   expandedId === app.id && "rotate-180"
                                 )}
                               />
@@ -582,36 +612,39 @@ export default function CandidateApplicationsPage() {
                         </div>
 
                         {/* Pipeline visualization */}
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2 overflow-x-auto">
+                        <div className="mt-2 pl-0 md:pl-16">
+                          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
                             {PIPELINE_STAGES.map((stage, index) => {
                               const isPast = pipelineIndex > -1 && index <= pipelineIndex;
                               const isCurrent = pipelineIndex === index;
                               return (
-                                <div key={stage.key} className="flex items-center gap-2">
+                                <div key={stage.key} className="flex items-center gap-2 flex-shrink-0">
                                   <div className="flex flex-col items-center min-w-[72px]">
                                     <div
                                       className={cn(
-                                        "h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-semibold",
+                                        "h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-bold transition-colors",
                                         isPast
-                                          ? "bg-blue-600 border-blue-600 text-white"
-                                          : "bg-white border-blue-100 text-blue-500"
+                                          ? "bg-primary border-primary text-primary-foreground"
+                                          : "bg-muted border-border text-muted-foreground"
                                       )}
                                       aria-label={`Stage ${stage.label}`}
                                     >
                                       {index + 1}
                                     </div>
-                                    <span className="mt-1 text-[10px] text-gray-600 whitespace-nowrap">
+                                    <span className={cn(
+                                      "mt-1.5 text-[10px] whitespace-nowrap font-medium transition-colors",
+                                      isPast ? "text-primary" : "text-muted-foreground"
+                                    )}>
                                       {stage.label}
                                     </span>
                                   </div>
                                   {index < PIPELINE_STAGES.length - 1 && (
                                     <div
                                       className={cn(
-                                        "h-0.5 w-8 rounded-full",
+                                        "h-0.5 w-8 rounded-full transition-colors",
                                         index < pipelineIndex
-                                          ? "bg-blue-500"
-                                          : "bg-blue-100"
+                                          ? "bg-primary"
+                                          : "bg-border"
                                       )}
                                       aria-hidden="true"
                                     />
@@ -621,7 +654,8 @@ export default function CandidateApplicationsPage() {
                             })}
                           </div>
                           {app.nextStep && (
-                            <p className="mt-2 text-[11px] text-blue-800 bg-blue-50/70 inline-flex px-2 py-1 rounded-full">
+                            <p className="mt-2 text-xs font-medium text-primary bg-primary/10 inline-flex px-3 py-1 rounded-full items-center gap-1.5">
+                              <Sparkles className="w-3 h-3" />
                               Next step: {app.nextStep}
                             </p>
                           )}
@@ -629,27 +663,30 @@ export default function CandidateApplicationsPage() {
 
                         {/* Expanded details */}
                         {expandedId === app.id && (
-                          <div className="mt-3 border-t border-blue-50 pt-3 text-xs text-gray-700 grid gap-3 md:grid-cols-3">
-                            <div className="md:col-span-2 space-y-2">
-                              <p className="font-medium text-gray-900">Application timeline</p>
-                              <ul className="space-y-2">
-                                <li className="flex items-start gap-2">
-                                  <div className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
+                          <div className="mt-3 border-t border-border pt-4 text-sm grid gap-6 md:grid-cols-3 animate-in slide-in-from-top-2 duration-200">
+                            <div className="md:col-span-2 space-y-3">
+                              <p className="font-semibold text-foreground flex items-center gap-2">
+                                <Clock className="w-4 h-4 text-primary" />
+                                Application Timeline
+                              </p>
+                              <ul className="space-y-4 relative pl-2 ml-1 border-l border-border/50">
+                                <li className="flex items-start gap-3 relative">
+                                  <div className="absolute -left-[13px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-background" />
                                   <div>
-                                    <p className="text-xs text-gray-800">Applied</p>
-                                    <p className="text-[11px] text-gray-500">
+                                    <p className="font-medium text-foreground text-sm">Application Received</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
                                       {formatDate(app.appliedDate)}
                                     </p>
                                   </div>
                                 </li>
                                 {app.lastUpdatedAt && (
-                                  <li className="flex items-start gap-2">
-                                    <div className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
+                                  <li className="flex items-start gap-3 relative">
+                                    <div className="absolute -left-[13px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-background" />
                                     <div>
-                                      <p className="text-xs text-gray-800">
-                                        Status updated to {app.status}
+                                      <p className="font-medium text-foreground text-sm">
+                                        Status updated to <span className="capitalize">{app.status}</span>
                                       </p>
-                                      <p className="text-[11px] text-gray-500">
+                                      <p className="text-xs text-muted-foreground mt-0.5">
                                         {formatDate(app.lastUpdatedAt)} ({formatRelativeDate(app.lastUpdatedAt)})
                                       </p>
                                     </div>
@@ -657,32 +694,35 @@ export default function CandidateApplicationsPage() {
                                 )}
                               </ul>
                             </div>
-                            <div className="space-y-2">
-                              <p className="font-medium text-gray-900">Actions</p>
+                            <div className="space-y-3">
+                              <p className="font-semibold text-foreground flex items-center gap-2">
+                                <Briefcase className="w-4 h-4 text-primary" />
+                                Actions
+                              </p>
                               <div className="flex flex-col gap-2">
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="justify-between border-red-200 text-red-600 hover:bg-red-50"
+                                  className="justify-between border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 dark:border-red-900/30 dark:hover:bg-red-900/20"
                                   onClick={() => {
                                     setSelectedIds(new Set([app.id]));
                                     performBulkAction("withdraw");
                                   }}
                                 >
                                   Withdraw application
-                                  <X className="w-3 h-3" />
+                                  <X className="w-3.5 h-3.5" />
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="justify-between border-slate-200 text-slate-700 hover:bg-slate-50"
+                                  className="justify-between"
                                   onClick={() => {
                                     setSelectedIds(new Set([app.id]));
                                     performBulkAction("archive");
                                   }}
                                 >
                                   Archive
-                                  <ChevronDown className="w-3 h-3" />
+                                  <ChevronDown className="w-3.5 h-3.5" />
                                 </Button>
                               </div>
                             </div>
@@ -698,26 +738,27 @@ export default function CandidateApplicationsPage() {
 
           {/* Pagination */}
           {applications.length > 0 && (
-            <section className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between pt-2 border-t border-blue-50">
-              <div className="flex items-center gap-3 text-xs text-gray-600">
+            <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between pt-4 border-t border-border">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium">
                 <span>
                   Page {page} of {totalPages}
                 </span>
+                <span className="hidden sm:inline w-px h-4 bg-border mx-1" />
                 <span className="hidden sm:inline">
                   Showing {(page - 1) * pageSize + 1}–
                   {Math.min(page * pageSize, total)} of {total} applications
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 text-xs text-gray-600">
-                  <span>Rows per page</span>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mr-2">
+                  <span>Rows:</span>
                   <select
                     value={pageSize}
                     onChange={(e) => {
                       setPageSize(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="h-8 rounded-md border border-blue-100 bg-white/90 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    className="h-8 rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                   >
                     {PAGE_SIZE_OPTIONS.map((size) => (
                       <option key={size} value={size}>
@@ -730,7 +771,7 @@ export default function CandidateApplicationsPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 border-blue-100"
+                    className="h-9 w-9"
                     disabled={page === 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     aria-label="Previous page"
@@ -740,7 +781,7 @@ export default function CandidateApplicationsPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="h-8 w-8 border-blue-100"
+                    className="h-9 w-9"
                     disabled={page === totalPages}
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     aria-label="Next page"
@@ -787,13 +828,24 @@ export default function CandidateApplicationsPage() {
 
 function ApplicationsSkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {Array.from({ length: 4 }).map((_, idx) => (
-        <div key={idx} className="rounded-2xl bg-white/90 border border-blue-50 p-4 space-y-3">
-          <Skeleton className="h-5 w-1/3" />
-          <Skeleton className="h-4 w-1/4" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-8 w-full" />
+        <div key={idx} className="rounded-xl bg-card border border-border p-5 space-y-4">
+          <div className="flex justify-between items-start">
+            <div className="flex gap-4 w-full">
+              <Skeleton className="h-12 w-12 rounded-lg" />
+              <div className="space-y-2 w-full max-w-md">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="flex gap-2 pt-1">
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+              </div>
+            </div>
+            <Skeleton className="h-8 w-24 rounded-lg" />
+          </div>
+          <Skeleton className="h-12 w-full rounded-lg" />
         </div>
       ))}
     </div>
@@ -802,24 +854,23 @@ function ApplicationsSkeleton() {
 
 function EmptyApplicationsState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-        <Briefcase className="w-10 h-10 text-blue-500" />
+    <div className="flex flex-col items-center justify-center py-20 text-center border-2 border-dashed border-border rounded-xl bg-muted/20">
+      <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 animate-in zoom-in-50 duration-500">
+        <Briefcase className="w-10 h-10 text-primary" />
       </div>
-      <h2 className="text-lg font-semibold text-gray-900">You haven&apos;t applied to any jobs yet</h2>
-      <p className="mt-2 max-w-md text-sm text-gray-600">
-        Once you start applying through HireMate, all your applications will appear here so you can
-        track their status in one place.
+      <h2 className="text-xl font-bold text-foreground">No applications yet</h2>
+      <p className="mt-2 max-w-md text-muted-foreground leading-relaxed">
+        Start applying to jobs that match your profile. Track your applications and pipeline stages here.
       </p>
-      <Link href="/homepage" className="mt-4">
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-          Browse Jobs
-          <ArrowUpRight className="w-4 h-4" />
+      <Link href="/homepage" className="mt-8">
+        <Button size="lg" className="shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all hover:-translate-y-0.5">
+          Browse Open Positions
+          <ArrowUpRight className="w-5 h-5 ml-2" />
         </Button>
       </Link>
-      <div className="mt-4 max-w-md text-xs text-gray-500">
-        Tip: Tailor your resume to each job and keep your profile up to date to increase your
-        chances of getting shortlisted.
+      <div className="mt-8 flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 px-4 py-2 rounded-full border border-border">
+        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+        <span>Tip: Complete your profile to get matched with better opportunities.</span>
       </div>
     </div>
   );

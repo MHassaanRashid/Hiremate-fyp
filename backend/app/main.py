@@ -10,6 +10,7 @@ from app.routers import (
     resume_router as resume,
     applications,
     settings,
+    jobs,
 )
 
 # Initialize FastAPI app
@@ -28,6 +29,7 @@ app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(resume.router, prefix="/api/resume", tags=["Resume"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
 app.include_router(settings.router, prefix="/api/candidate/settings", tags=["Candidate Settings"])
+app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 
 # Root endpoint
 @app.get("/")
