@@ -1,53 +1,83 @@
 "use client"
 
 import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
+import toast from "react-hot-toast"
 
 export default function AuthCallback() {
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     const handleAuth = async () => {
-      // Get current session after OAuth redirect
-      const { data, error } = await supabase.auth.getSession()
-      if (error) {
-        console.error("Auth error:", error)
-        router.replace("/auth?tab=login")
-        return
-      }
+      try {
+        const hash = window.location.hash
+        const role = searchParams.get("role") || "candidate"
 
-      if (data.session) {
-        const user = data.session.user
+        console.log("🔹 Auth Callback - Hash:", hash)
+        console.log("🔹 Auth Callback - Role:", role)
 
-        // Get role from query param
-        const roleFromQuery = new URLSearchParams(window.location.search).get("role") as
-          | "candidates"
-          | "company"
-          | null
-
-        // If role is passed and not already set, update user metadata
-        if (roleFromQuery && !user.user_metadata?.role) {
-          await supabase.auth.updateUser({
-            data: { role: roleFromQuery },
-          })
+        // Get current session after redirect
+        const { data, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error("Auth error:", error)
+          toast.error("Authentication failed.")
+          router.replace(`/auth/${role}`)
+          return
         }
 
-        // Use the updated role or default
-        const userRole = user.user_metadata?.role || roleFromQuery || "candidates"
+        if (data.session) {
+          const user = data.session.user
+          console.log("✓ User authenticated:", user.id)
 
-        // Redirect to the role-based dashboard
-        router.replace(
-          userRole === "company"
-            ? "/company"
-            : "/candidates"
-        )
-      } else {
-        router.replace("/auth?tab=login")
+          // Verify email confirmed
+          if (user.email_confirmed_at) {
+            toast.success("Email verified successfully!")
+            
+            // Map backend role to frontend role
+            const roleMap: { [key: string]: string } = {
+              "recruiter": "company",
+              "candidate": "candidate",
+              "interviewer": "interviewer"
+            }
+            const dashboardRole = roleMap[role] || role
+            
+            // Redirect to dashboard
+            setTimeout(() => {
+              router.replace(`/${dashboardRole}`)
+            }, 1500)
+          } else {
+            // Email not yet verified, but they clicked the link
+            toast.success("Email verified! You can now log in.")
+            setTimeout(() => {
+              router.replace(`/auth/${role}`)
+            }, 1500)
+          }
+        } else {
+          toast.error("Session not found. Please log in.")
+          router.replace(`/auth/${role}`)
+        }
+      } catch (error: any) {
+        console.error("Auth callback error:", error)
+        toast.error(error.message || "An error occurred.")
+        router.replace("/auth/candidate")
       }
     }
 
     handleAuth()
+  }, [router, searchParams])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p className="mt-4 text-white text-lg">Verifying your email...</p>
+      </div>
+    </div>
+  )
+}
   }, [router])
 
   return (

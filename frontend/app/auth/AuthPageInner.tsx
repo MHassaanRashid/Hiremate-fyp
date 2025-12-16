@@ -8,7 +8,8 @@ import RegisterForm from "@/components/auth/register-form"
 import toast from "react-hot-toast"
 import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect } from "react"
 
 interface AuthPageInnerProps {
   role: "candidate" | "company" | "interviewer"
@@ -28,27 +29,40 @@ export default function AuthPageInner({ role }: AuthPageInnerProps) {
   })
 
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const error = searchParams.get("error")
+    if (error) {
+      toast.error(decodeURIComponent(error))
+      // Clean up URL
+      const newUrl = window.location.pathname
+      window.history.replaceState({}, "", newUrl)
+    }
+  }, [searchParams])
+
+
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault()
-  setIsSubmitting(true)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting(true)
 
-  try {
-    // Use the auth context login method
-    await loginWithEmail(formData.email, formData.password)
-    toast.success("Login successful!")
-    // Redirect is handled by the auth context
-  } catch (err: any) {
-    console.error("Login error:", err)
-    toast.error(err.message || "Login failed. Please try again.")
-  } finally {
-    setIsSubmitting(false)
+    try {
+      // Use the auth context login method
+      await loginWithEmail(formData.email, formData.password, role)
+      toast.success("Login successful!")
+      // Redirect is handled by the auth context
+    } catch (err: any) {
+      console.error("Login error:", err)
+      toast.error(err.message || "Login failed. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
-}
 
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -57,8 +71,13 @@ const handleLogin = async (e: React.FormEvent) => {
     try {
       // Map frontend role to backend role
       const backendRole = role === "company" ? "recruiter" : role
-      const registrationData = { ...formData, role: backendRole }
-      
+      const registrationData = { 
+        full_name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: backendRole 
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -66,10 +85,30 @@ const handleLogin = async (e: React.FormEvent) => {
       })
       const data = await response.json()
       if (response.ok) {
-        toast.success("Registration Successful")
-        setActiveTab("login")
+        const userEmail = data.user?.email || formData.email
+        toast.success(
+          `Successfully Registered. An email has been sent to ${userEmail} Please verify.`,
+          { duration: 4000 }
+        )
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          setActiveTab("login")
+          setFormData({
+            fullName: "",
+            email: "",
+            password: "",
+            confirmPassword: "",
+            role,
+          })
+        }, 2000)
       } else {
-        toast.error(data.error || "Failed to create account.")
+        const errorMsg = data.detail || data.error || "Failed to create account."
+        // Check for email validation error
+        if (errorMsg.includes("invalid") || errorMsg.includes("Email")) {
+          toast.error(`Please use a valid email address (Gmail, Outlook, etc.)`)
+        } else {
+          toast.error(errorMsg)
+        }
       }
     } catch (err) {
       console.error("Registration error:", err)

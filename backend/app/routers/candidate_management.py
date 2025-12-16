@@ -10,9 +10,13 @@ router = APIRouter(prefix="/candidates", tags=["candidate-management"])
 async def get_candidates():
     try:
         response = supabase_client.table("candidates").select("*").execute()
-        return response.data
+        return response.data or []
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # If the `candidates` table is missing or the query fails, log and
+        # return an empty list so the frontend can handle it gracefully.
+        import traceback
+        print(traceback.format_exc())
+        return []
 
 
 # ----- Resume CRUD -----

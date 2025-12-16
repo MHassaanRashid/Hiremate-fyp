@@ -91,9 +91,12 @@ export default function RecruiterDashboard() {
 
       const fetchCandidates = async () => {
         try {
-          const res = await fetch("http://localhost:5000/candidates/")
+          const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+          // call backend candidate-management list endpoint
+          const res = await fetch(`${backend}/candidate-management/candidates/`)
           const data = await res.json()
-          setCandidates(data)
+          // ensure we always store an array
+          setCandidates(Array.isArray(data) ? data : (data?.data || []))
         } catch (err) {
           console.error("Error fetching candidates:", err)
         } finally {

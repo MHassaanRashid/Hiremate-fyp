@@ -108,3 +108,9 @@ git push          # push to GitHub
 =======
 # Final_year_project
 >>>>>>> 5a3b6f55f95c521f5a966fcd89ae8abec8769286
+
+
+git remote set-url origin https://github.com/MHassaanRashid/Final_year_project.git
+git add .
+git commit -m "update"
+git push -u origin main

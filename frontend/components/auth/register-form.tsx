@@ -70,6 +70,7 @@ export default function RegisterForm({
           disabled={isLoading}
         />
       </div>
+      <p className="text-xs text-gray-500">Use a valid email (Gmail, Outlook, Yahoo, etc.)</p>
 
       {/* Password */}
       <div className="relative">
