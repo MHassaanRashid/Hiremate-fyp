@@ -12,6 +12,8 @@ import {
   User,
   ChevronLeft,
   ChevronRight,
+  Calendar,
+  Search,
 } from "lucide-react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
@@ -35,9 +37,11 @@ import {
 
 const sidebarItems = [
   { icon: Home, label: "Dashboard", path: "/candidate" },
+  { icon: Search, label: "Find Jobs", path: "/candidate/find-jobs" },
   { icon: FileText, label: "Resume", path: "/candidate/resume" },
   { icon: Video, label: "AI Interviews", path: "/ai-interview" },
   { icon: Briefcase, label: "Applications", path: "/candidate/applications" },
+  { icon: Calendar, label: "My Interviews", path: "/candidate/interviews" },
   { icon: User, label: "Profile", path: "/candidate/profile" },
   { icon: Settings, label: "Settings", path: "/candidate/settings" },
 ]
@@ -49,7 +53,7 @@ function AppSidebar() {
   const pathname = usePathname()
   const { state, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
   const isExpanded = state === "expanded"
-  
+
   // Find active section based on current path
   const isActive = (path: string) => {
     if (path === "/candidate") {
@@ -142,20 +146,20 @@ function AppSidebar() {
                       {!active && (
                         <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-indigo-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       )}
-                      
+
                       {/* Icon */}
                       <item.icon className={cn(
                         "h-5 w-5 flex-shrink-0 relative z-10 transition-transform duration-200",
                         active ? "scale-110" : "group-hover:scale-110"
                       )} />
-                      
+
                       {/* Label */}
                       {isExpanded && (
                         <span className="relative z-10 font-medium">
                           {item.label}
                         </span>
                       )}
-                      
+
                       {/* Active indicator */}
                       {active && (
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-l-full" />
@@ -167,7 +171,7 @@ function AppSidebar() {
 
               {/* Divider */}
               <div className="my-3 border-t border-slate-700/50" />
-              
+
               {/* Logout */}
               <SidebarMenuItem>
                 <button
@@ -179,9 +183,9 @@ function AppSidebar() {
                   title={!isExpanded ? "Logout" : undefined}
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  
+
                   <LogOut className="h-5 w-5 flex-shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110" />
-                  
+
                   {isExpanded && (
                     <span className="relative z-10 font-medium">
                       Logout
@@ -197,7 +201,7 @@ function AppSidebar() {
       {/* Sidebar Footer (User Profile) */}
       {user && (
         <SidebarFooter className="border-t border-slate-700/50 p-3">
-          <div 
+          <div
             className="flex items-center gap-3 cursor-pointer hover:bg-slate-800/50 rounded-xl p-2.5 transition-all duration-200 group"
             onClick={() => handleNavigation("/candidate-profile")}
           >
@@ -236,7 +240,7 @@ export default function CandidateSidebarLayout({ children }: CandidateSidebarLay
     <div className="min-h-screen bg-gray-50">
       <SidebarProvider defaultOpen={true}>
         <AppSidebar />
-        
+
         {/* Main Content Area */}
         <SidebarInset className="flex flex-col min-h-screen">
           {/* Page Content */}

@@ -80,3 +80,14 @@ async def get_dashboard_stats(user=Depends(get_current_user)):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch stats: {str(e)}")
+
+
+@router.get("/company")
+async def get_company_dashboard(user=Depends(get_current_user)):
+    """
+    Get dashboard data for the company/recruiter
+    """
+    try:
+        return DashboardService.get_company_dashboard_data(user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch company dashboard data: {str(e)}")

@@ -1,6 +1,5 @@
-'use client';
-
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   User,
   Briefcase,
@@ -22,6 +21,7 @@ import {
   Sparkles,
   Bell,
   MessageSquare,
+  Search,
 } from 'lucide-react';
 import {
   CandidateProfile,
@@ -55,6 +55,7 @@ export default function CandidateDashboard({
   activity,
   isLoading = false,
 }: CandidateDashboardProps) {
+  const router = useRouter();
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
 
   if (isLoading) {
@@ -117,13 +118,19 @@ export default function CandidateDashboard({
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors">
-                <FileText className="w-4 h-4" />
-                Complete Profile
+              <button
+                onClick={() => router.push('/candidate/find-jobs')}
+                className="flex items-center gap-2 bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-blue-50 transition-colors"
+              >
+                <Search className="w-4 h-4" />
+                Browse Jobs
               </button>
-              <button className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-400 transition-colors border border-blue-400">
-                <Upload className="w-4 h-4" />
-                Upload Resume
+              <button
+                onClick={() => router.push('/candidate/profile')}
+                className="flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-400 transition-colors border border-blue-400"
+              >
+                <User className="w-4 h-4" />
+                Complete Profile
               </button>
             </div>
           </div>
@@ -183,7 +190,10 @@ export default function CandidateDashboard({
                   <h2 className="text-xl font-bold text-gray-900">
                     Recent Applications
                   </h2>
-                  <button className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 transition-colors">
+                  <button
+                    onClick={() => router.push('/candidate/applications')}
+                    className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1 transition-colors"
+                  >
                     View All
                     <ChevronRight className="w-4 h-4" />
                   </button>
@@ -393,9 +403,8 @@ export default function CandidateDashboard({
                       strokeWidth="8"
                       fill="none"
                       strokeDasharray={`${2 * Math.PI * 56}`}
-                      strokeDashoffset={`${
-                        2 * Math.PI * 56 * (1 - strengthPercentage / 100)
-                      }`}
+                      strokeDashoffset={`${2 * Math.PI * 56 * (1 - strengthPercentage / 100)
+                        }`}
                       strokeLinecap="round"
                       className="transition-all duration-1000"
                     />

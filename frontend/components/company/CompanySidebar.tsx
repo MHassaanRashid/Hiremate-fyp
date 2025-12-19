@@ -4,17 +4,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { X } from "lucide-react"
+import { X, Briefcase, Users, Calendar, Settings, LayoutDashboard, LogOut } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 const sidebarItems = [
-  { label: "Post Jobs", route: "/post-job" },
-  { label: "Candidates", route: "/recruiter-dashboard" },
-  { label: "Analytics", route: "/analytics" },
-  { label: "Settings", route: "/settings" },
-  { label: "Logout", route: "/logout" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/company" },
+  { icon: Briefcase, label: "My Jobs", path: "/company/jobs" },
+  { icon: Users, label: "Candidates", path: "/company/candidates" },
+  { icon: Calendar, label: "Interviews", path: "/company/interviews" },
+  { icon: Settings, label: "Settings", path: "/company/settings" },
+  { icon: LogOut, label: "Logout", path: "/logout" },
 ]
 
 export default function CompanySidebar({
@@ -26,16 +27,15 @@ export default function CompanySidebar({
 }) {
   const { user, logout } = useAuth()
   const router = useRouter()
-  const [activeSection, setActiveSection] = useState("Candidates")
+  const [activeSection, setActiveSection] = useState("Dashboard")
 
   const getInitials = (name: string) =>
     name.split(" ").map((part) => part[0].toUpperCase()).join("").substring(0, 2)
 
   return (
     <div
-      className={`${
-        sidebarOpen ? "translate-x-0" : "-translate-x-full"
-      } fixed inset-y-0 left-0 z-50 w-64 bg-white/80 backdrop-blur-xl border-r border-blue-200/50 shadow-lg transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+      className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } fixed inset-y-0 left-0 z-50 w-64 bg-white/80 backdrop-blur-xl border-r border-blue-200/50 shadow-lg transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
     >
       <div className="flex items-center justify-between h-16 px-6 border-b border-blue-200/50">
         <div className="flex items-center">
@@ -56,34 +56,39 @@ export default function CompanySidebar({
 
       <nav className="mt-8 px-4">
         <div className="space-y-2">
-          {sidebarItems.map((item, index) => (
-            <Button
-              key={index}
-              variant="ghost"
-              className={`w-full justify-start text-left py-3 px-4 rounded-xl transition-all duration-200 ${
-                item.label === activeSection
+          {sidebarItems.map((item, index) => {
+            const Icon = item.icon
+            const isActive = item.label === activeSection
+
+            return (
+              <Button
+                key={index}
+                variant="ghost"
+                className={`w-full justify-start text-left py-3 px-4 rounded-xl transition-all duration-200 gap-3 ${isActive
                   ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 border border-blue-300"
                   : "text-gray-600 hover:text-gray-800 hover:bg-blue-50"
-              }`}
-              onClick={() => {
-                if (item.label === "Logout") {
-                  logout()
-                } else {
-                  setActiveSection(item.label)
-                  router.push(item.route) // ✅ client-side navigation
-                }
-              }}
-            >
-              {item.label}
-            </Button>
-          ))}
+                  }`}
+                onClick={() => {
+                  if (item.label === "Logout") {
+                    logout()
+                  } else {
+                    setActiveSection(item.label)
+                    router.push(item.path)
+                  }
+                }}
+              >
+                <Icon className={`h-5 w-5 ${isActive ? "text-blue-700" : "text-gray-400"}`} />
+                <span>{item.label}</span>
+              </Button>
+            )
+          })}
         </div>
       </nav>
 
       {/* User Profile in Sidebar */}
       <div
         className="absolute bottom-6 left-4 right-4 cursor-pointer"
-        onClick={() => router.push("/candidate-profile")}
+        onClick={() => router.push("/company/profile")}
       >
         <Card className="bg-blue-50/50 border-blue-200/50">
           <CardContent className="p-4">

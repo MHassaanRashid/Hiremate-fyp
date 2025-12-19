@@ -295,3 +295,69 @@ class DashboardService:
             supabase.table("candidate_profile_strength").insert(strength_record).execute()
         
         return {"message": "Profile strength updated successfully", "overall_score": strength_calc["overall_score"]}
+
+    @staticmethod
+    def get_company_dashboard_data(user) -> dict:
+        """
+        Get dashboard data for a company/recruiter
+        """
+        user_id = user.id
+        
+        # 1. Stats - Total Jobs
+        jobs_result = supabase.table("jobs").select("id", count="exact").eq("user_id", user_id).execute()
+        total_jobs = jobs_result.count if hasattr(jobs_result, 'count') else len(jobs_result.data or [])
+
+        # Get job IDs for further filtering
+        jobs_data = supabase.table("jobs").select("id").eq("user_id", user_id).execute()
+        job_ids = [j['id'] for j in (jobs_data.data or [])]
+        
+        total_applications = 0
+        shortlisted = 0
+        recent_applications = []
+        
+        if job_ids:
+            # Total Applications for these jobs
+            apps_result = supabase.table("applications").select("id", count="exact").in_("job_id", job_ids).execute()
+            total_applications = apps_result.count if hasattr(apps_result, 'count') else len(apps_result.data or [])
+            
+            # Shortlisted
+            shortlisted_result = supabase.table("applications").select("id", count="exact").in_("job_id", job_ids).eq("status", "shortlisted").execute()
+            shortlisted = shortlisted_result.count if hasattr(shortlisted_result, 'count') else len(shortlisted_result.data or [])
+            
+            # Recent Applications
+            # Fetch applications with candidate details via user_id relationship to profiles
+            # Note: referencing profiles via user_id foreign key
+            rec_apps_data = supabase.table("applications")\
+                .select("*, profiles!user_id(full_name, email, avatar_url, experience, skills)")\
+                .in_("job_id", job_ids)\
+                .order("applied_date", desc=True)\
+                .limit(10)\
+                .execute()
+            
+            raw_apps = rec_apps_data.data or []
+            
+            # Process applications to flatten structure for frontend
+            for app in raw_apps:
+                candidate_profile = app.get("profiles") or {}
+                recent_applications.append({
+                    "id": app["id"],
+                    "job_title": app["job_title"],
+                    "status": app["status"],
+                    "applied_date": app["applied_date"],
+                    "candidate": {
+                        "name": candidate_profile.get("full_name", "Unknown"),
+                        "email": candidate_profile.get("email", ""),
+                        "avatar": candidate_profile.get("avatar_url"),
+                        "experience": candidate_profile.get("experience"),
+                        "skills": candidate_profile.get("skills")
+                    }
+                })
+        
+        return {
+            "stats": {
+                "total_jobs": total_jobs,
+                "total_applications": total_applications,
+                "shortlisted": shortlisted,
+            },
+            "recent_applications": recent_applications
+        }

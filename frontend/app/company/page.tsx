@@ -3,340 +3,324 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import CompanySidebar from "@/components/company/CompanySidebar"
 import {
-  Search,
   Users,
-  Calendar,
+  Briefcase,
   Star,
-  Award,
-  Plus,
-  Menu,
   TrendingUp,
+  FileText,
+  Clock,
+  MoreHorizontal,
+  ChevronRight,
+  TrendingDown,
+  Calendar,
+  Sparkles,
+  Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-interface Candidate {
-  id: string
-  name: string
-  email: string
-  job_applied: string
-  interview_status: string
-  application_date: string
-  score: number
-  experience: string
-  skills: string[]
-  avatar: string
-  location: string
-  application_status: string
+interface DashboardStats {
+  total_jobs: number
+  total_applications: number
+  shortlisted: number
 }
 
-const statsData = [
-  {
-    title: "Total Applications",
-    value: "156",
-    change: "+12%",
-    icon: Users,
-    color: "from-emerald-500 to-cyan-500",
-    glowColor: "shadow-emerald-500/30",
-  },
-  {
-    title: "Interviews Scheduled",
-    value: "24",
-    change: "+8%",
-    icon: Calendar,
-    color: "from-blue-500 to-indigo-500",
-    glowColor: "shadow-blue-500/30",
-  },
-  {
-    title: "Shortlisted",
-    value: "42",
-    change: "+15%",
-    icon: Star,
-    color: "from-purple-500 to-pink-500",
-    glowColor: "shadow-purple-500/30",
-  },
-  {
-    title: "Hired This Month",
-    value: "8",
-    change: "+25%",
-    icon: Award,
-    color: "from-orange-500 to-red-500",
-    glowColor: "shadow-orange-500/30",
-  },
-]
+interface RecentApplication {
+  id: string
+  job_title: string
+  status: string
+  applied_date: string
+  candidate: {
+    name: string
+    email: string
+    avatar: string | null
+  }
+}
+
+interface DashboardData {
+  stats: DashboardStats
+  recent_applications: RecentApplication[]
+}
 
 export default function RecruiterDashboard() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
-  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [scoreFilter, setScoreFilter] = useState("all")
-  const [dateFilter, setDateFilter] = useState("all")
-  const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 
   useEffect(() => {
-    if (!isLoading) {
+    if (!authLoading) {
       if (!user) {
         router.push("/auth?tab=login")
         return
       }
 
-      const fetchCandidates = async () => {
+      const fetchDashboardData = async () => {
         try {
           const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
-          // call backend candidate-management list endpoint
-          const res = await fetch(`${backend}/candidate-management/candidates/`)
+          const res = await fetch(`${backend}/dashboard/company`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            },
+          })
+
+          if (!res.ok) throw new Error("Failed to fetch dashboard data")
           const data = await res.json()
-          // ensure we always store an array
-          setCandidates(Array.isArray(data) ? data : (data?.data || []))
+          setDashboardData(data)
         } catch (err) {
-          console.error("Error fetching candidates:", err)
+          console.error("Error fetching dashboard data:", err)
         } finally {
           setLoading(false)
         }
       }
 
-      fetchCandidates()
+      fetchDashboardData()
     }
-  }, [user, isLoading, router])
+  }, [user, authLoading, router])
 
-  const filteredCandidates = candidates.filter((candidate) => {
-    const matchesSearch =
-      candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      candidate.job_applied.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesStatus = statusFilter === "all" || candidate.application_status === statusFilter
-
-    const matchesScore =
-      scoreFilter === "all" ||
-      (scoreFilter === "high" && candidate.score >= 85) ||
-      (scoreFilter === "medium" && candidate.score >= 70 && candidate.score < 85) ||
-      (scoreFilter === "low" && candidate.score < 70)
-
-    const applicationDate = new Date(candidate.application_date)
-    const today = new Date()
-    const oneDay = 24 * 60 * 60 * 1000
-    const oneWeek = 7 * oneDay
-    const oneMonth = 30 * oneDay
-
-    const matchesDate =
-      dateFilter === "all" ||
-      (dateFilter === "today" &&
-        applicationDate.toDateString() === today.toDateString()) ||
-      (dateFilter === "week" &&
-        applicationDate >= new Date(today.getTime() - oneWeek)) ||
-      (dateFilter === "month" &&
-        applicationDate >= new Date(today.getTime() - oneMonth))
-
-    return matchesSearch && matchesStatus && matchesScore && matchesDate
-  })
-
-  if (isLoading || loading) {
+  if (authLoading || loading) {
     return (
-      <div className="p-6 text-gray-600">Loading...</div>
+      <div className="flex h-screen bg-slate-50 items-center justify-center">
+        <Skeleton className="h-4/5 w-4/5 rounded-2xl" />
+      </div>
     )
   }
 
+  const stats = dashboardData?.stats || { total_jobs: 0, total_applications: 0, shortlisted: 0 }
+  const recentApps = dashboardData?.recent_applications || []
+
   return (
-    <div className="flex h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-      <CompanySidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
-        <header className="bg-white/80 backdrop-blur-xl border-b border-blue-200/50 p-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden mr-4 text-gray-500 hover:text-gray-700"
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Candidate Management</h1>
-                <p className="text-gray-600">Manage and track your candidates</p>
+    <div className="flex-1 flex flex-col h-full bg-slate-50/50 overflow-y-auto">
+      {/* Header Section */}
+      <div className="bg-white border-b border-slate-200/60 px-8 py-10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              Recruiter Dashboard <Sparkles className="h-6 w-6 text-blue-500 animate-pulse" />
+            </h1>
+            <p className="text-slate-500 mt-2 font-medium">Welcome back, {user?.full_name || 'Hiring Manager'}. Here's what's happening with your job postings.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => router.push("/company/post-job")}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold h-12 px-6 shadow-lg shadow-blue-200 transition-all active:scale-95"
+            >
+              <Briefcase className="mr-2 h-5 w-5" /> Post New Job
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <main className="flex-1 p-8 max-w-7xl mx-auto w-full space-y-10">
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Total Jobs */}
+          <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="h-1.5 bg-blue-500 w-full"></div>
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Active Jobs</p>
+                  <h2 className="text-4xl font-black text-slate-900">{stats.total_jobs}</h2>
+                </div>
+                <div className="h-14 w-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+                  <Briefcase className="h-7 w-7" />
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Button className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white">
-                <Plus className="mr-2 h-4 w-4" />
-                Post New Job
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {statsData.map((stat, index) => (
-              <Card
-                key={index}
-                className="bg-white/80 backdrop-blur-xl border-blue-200/50 hover:border-blue-300/50 shadow-lg hover:shadow-xl transition-all duration-300"
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-600 text-sm font-medium">{stat.title}</p>
-                      <div className="flex items-center mt-2">
-                        <span className="text-2xl font-bold text-gray-800 mr-2">{stat.value}</span>
-                        <Badge
-                          variant="outline"
-                          className="bg-emerald-500/10 border-emerald-400/30 text-emerald-600 text-xs"
-                        >
-                          <TrendingUp className="w-3 h-3 mr-1" />
-                          {stat.change}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div
-                      className={`w-12 h-12 bg-gradient-to-r ${stat.color} rounded-xl flex items-center justify-center shadow-lg ${stat.glowColor}`}
-                    >
-                      <stat.icon className="h-6 w-6 text-white" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Filters and Search */}
-          <Card className="mb-6 bg-white/80 backdrop-blur-xl border-blue-200/50 shadow-lg">
-            <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search candidates..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-blue-50 border-blue-200 text-gray-800 placeholder-gray-500 focus:ring-blue-300"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-40 bg-blue-50 border-blue-200 text-gray-800">
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="new">New</SelectItem>
-                      <SelectItem value="reviewed">Reviewed</SelectItem>
-                      <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                      <SelectItem value="rejected">Rejected</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={scoreFilter} onValueChange={setScoreFilter}>
-                    <SelectTrigger className="w-32 bg-blue-50 border-blue-200 text-gray-800">
-                      <SelectValue placeholder="Score" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Scores</SelectItem>
-                      <SelectItem value="high">85+ High</SelectItem>
-                      <SelectItem value="medium">70-84 Medium</SelectItem>
-                      <SelectItem value="low">Below 70</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={dateFilter} onValueChange={setDateFilter}>
-                    <SelectTrigger className="w-32 bg-blue-50 border-blue-200 text-gray-800">
-                      <SelectValue placeholder="Date" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white border-blue-200">
-                      <SelectItem value="all">All Time</SelectItem>
-                      <SelectItem value="today">Today</SelectItem>
-                      <SelectItem value="week">This Week</SelectItem>
-                      <SelectItem value="month">This Month</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setViewMode("cards")}
-                    className={`border-blue-200 ${viewMode === "cards" ? "bg-blue-600 text-white" : "text-gray-600"}`}
-                  >
-                    Cards
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setViewMode("table")}
-                    className={`border-blue-200 ${viewMode === "table" ? "bg-blue-600 text-white" : "text-gray-600"}`}
-                  >
-                    Table
-                  </Button>
-                </div>
+              <div className="mt-6 flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 w-fit px-2 py-1 rounded-md">
+                <TrendingUp className="h-3 w-3 mr-1" /> +2 this month
               </div>
             </CardContent>
           </Card>
 
-          {/* Candidates Display */}
-          {viewMode === "cards" ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredCandidates.map((c) => (
-                <Card
-                  key={c.id}
-                  className="bg-white/90 backdrop-blur-xl border-blue-200/50 hover:border-blue-300/50 shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+          {/* Total Candidates */}
+          <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="h-1.5 bg-purple-500 w-full"></div>
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Total Candidates</p>
+                  <h2 className="text-4xl font-black text-slate-900">{stats.total_applications}</h2>
+                </div>
+                <div className="h-14 w-14 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
+                  <Users className="h-7 w-7" />
+                </div>
+              </div>
+              <div className="mt-6 flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 w-fit px-2 py-1 rounded-md">
+                <TrendingUp className="h-3 w-3 mr-1" /> +24% vs last week
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Shortlisted */}
+          <Card className="border-none shadow-sm bg-white overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+            <div className="h-1.5 bg-amber-500 w-full"></div>
+            <CardContent className="p-8">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-slate-500 text-sm font-bold uppercase tracking-wider">Shortlisted</p>
+                  <h2 className="text-4xl font-black text-slate-900">{stats.shortlisted}</h2>
+                </div>
+                <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-colors duration-300">
+                  <Star className="h-7 w-7" />
+                </div>
+              </div>
+              <div className="mt-6 flex items-center text-xs font-bold text-blue-600 bg-blue-50 w-fit px-2 py-1 rounded-md">
+                <TrendingUp className="h-3 w-3 mr-1" /> High conversion rate
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content: Recent Applications */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-none shadow-sm bg-white overflow-hidden">
+              <CardHeader className="p-8 border-b border-slate-100 flex flex-row items-center justify-between bg-white sticky top-0 z-10">
+                <div>
+                  <CardTitle className="text-xl font-black text-slate-900">Recent Applications</CardTitle>
+                  <CardDescription>Track your newest incoming talent.</CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="text-blue-600 font-bold hover:bg-blue-50"
+                  onClick={() => router.push("/company/candidates")}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center space-x-4">
-                      {c.avatar && (
-                        <img
-                          src={c.avatar}
-                          alt={c.name}
-                          className="w-12 h-12 rounded-full object-cover"
-                        />
-                      )}
-                      <div>
-                        <p className="font-semibold text-gray-800">{c.name}</p>
-                        <p className="text-sm text-gray-600">{c.job_applied}</p>
-                        <p className="text-sm text-gray-600">{c.location}</p>
-                      </div>
+                  View All Candidates <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                {recentApps.length > 0 ? (
+                  <Table>
+                    <TableHeader className="bg-slate-50/50">
+                      <TableRow>
+                        <TableHead className="px-8 font-bold text-slate-500 py-4">Candidate</TableHead>
+                        <TableHead className="font-bold text-slate-500">Job Role</TableHead>
+                        <TableHead className="font-bold text-slate-500">Status</TableHead>
+                        <TableHead className="text-right px-8 font-bold text-slate-500">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {recentApps.map((app) => (
+                        <TableRow key={app.id} className="hover:bg-slate-50/50 transition-colors">
+                          <TableCell className="px-8 py-4">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10 ring-2 ring-slate-100 ring-offset-2">
+                                <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
+                                  {app.candidate.name.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-bold text-slate-900 text-sm">{app.candidate.name}</p>
+                                <p className="text-xs text-slate-500 font-medium">{app.candidate.email}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm font-semibold text-slate-600 bg-slate-100 px-3 py-1 rounded-full">{app.job_title}</span>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`
+                              capitalize border-none px-3 py-1 font-bold
+                              ${app.status === 'pending' ? 'bg-amber-50 text-amber-600' : ''}
+                              ${app.status === 'shortlisted' ? 'bg-emerald-50 text-emerald-600' : ''}
+                              ${app.status === 'rejected' ? 'bg-rose-50 text-rose-600' : ''}
+                            `}>
+                              {app.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right px-8">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-9 w-9 p-0 hover:bg-blue-50 text-slate-400 hover:text-blue-600"
+                              onClick={() => router.push("/company/candidates")}
+                            >
+                              <ChevronRight className="h-5 w-5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="p-20 text-center">
+                    <div className="mx-auto bg-slate-50 rounded-full h-20 w-20 flex items-center justify-center mb-6 text-slate-300">
+                      <Users className="h-10 w-10" />
                     </div>
-                    <p className="mt-2 text-sm">
-                      <strong>Status:</strong> {c.application_status} <br />
-                      <strong>Interview:</strong> {c.interview_status} <br />
-                      <strong>Score:</strong> {c.score}
-                    </p>
-                    {c.experience && (
-                      <p className="mt-2 text-sm text-gray-700">{c.experience}</p>
-                    )}
-                    {c.skills?.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {c.skills.map((skill, idx) => (
-                          <Badge
-                            key={idx}
-                            variant="outline"
-                            className="px-2 py-1 text-xs bg-blue-100 text-blue-800 border-blue-300"
-                          >
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <p>Table view to be implemented</p>
-          )}
-        </main>
-      </div>
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-blue-900/20 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
+                    <h3 className="text-xl font-bold text-slate-900 mb-2">No applications yet</h3>
+                    <p className="text-slate-500 max-w-xs mx-auto">When candidates apply to your jobs, they'll appear here automatically.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar Area: Quick Insights */}
+          <div className="space-y-8">
+            <Card className="border-none shadow-sm bg-blue-600 text-white overflow-hidden relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4 opacity-10">
+                <TrendingUp className="h-32 w-32 -mr-16 -mt-16" />
+              </div>
+              <CardHeader>
+                <CardTitle className="text-lg font-black tracking-tight">Recruitment Tip ✨</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-blue-100 text-sm leading-relaxed">Companies that respond to applicants within 24 hours have a 60% higher hire rate. Check your pending inbox!</p>
+                <Button variant="secondary" className="w-full bg-white text-blue-600 hover:bg-blue-50 font-bold" onClick={() => router.push("/company/candidates")}>Go to Candidates</Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm bg-white overflow-hidden">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-500" /> Upcoming Tasks
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                  <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center text-blue-600 shadow-sm">
+                    <Users className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-900">Review 4 Applicants</p>
+                    <p className="text-xs text-slate-500 font-medium">Software Engineer position</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                  <div className="h-10 w-10 bg-white rounded-lg flex items-center justify-center text-amber-600 shadow-sm">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-900">3 Interviews Today</p>
+                    <p className="text-xs text-slate-500 font-medium">Next: 2:00 PM with Sarah</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+      </main>
     </div>
   )
 }
