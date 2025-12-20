@@ -6,6 +6,7 @@ from app.routers import (
     candidates,
     dashboard,
     interviews,
+    interviewer,
     profile,
     resume_router as resume,
     applications,
@@ -25,6 +26,7 @@ app.include_router(candidate_management.router, prefix="/api/candidate-managemen
 app.include_router(candidates.router, prefix="/api/candidates", tags=["Candidates"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(interviews.router, prefix="/api/interviews", tags=["Interviews"])
+app.include_router(interviewer.router, prefix="/api/interviewer", tags=["Interviewer"])
 app.include_router(profile.router, prefix="/api/profile", tags=["Profile"])
 app.include_router(resume.router, prefix="/api/resume", tags=["Resume"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])

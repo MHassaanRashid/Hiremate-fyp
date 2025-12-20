@@ -65,8 +65,8 @@ export async function middleware(request: NextRequest) {
     }
 
     // 🔹 Map role → new clean paths
-    const redirectPath = role === "recruiter" ? "/company" : 
-                        role === "interviewer" ? "/interviewer" : "/candidate"
+    const redirectPath = role === "recruiter" ? "/company" :
+      role === "interviewer" ? "/interviewer" : "/candidate"
     console.log("Authenticated user, redirecting to:", redirectPath)
 
     const response = NextResponse.redirect(new URL(redirectPath, request.url))
@@ -88,5 +88,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/auth/:path*", "/company", "/candidate", "/interviewer", "/oauth-callback"],
+  matcher: [
+    "/auth/:path*",
+    "/company",
+    "/candidate",
+    "/interviewer",
+    "/interviewer/:path*",
+    "/oauth-callback"
+  ],
 }

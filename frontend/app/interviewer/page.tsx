@@ -3,183 +3,141 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import InterviewerLayout from "@/layouts/InterviewerLayout"
+import { getInterviewerDashboard } from "@/lib/api/interviewer"
+import type { InterviewerDashboardData } from "@/types/interviewer"
 import {
   Video,
   Calendar,
   Star,
-  Users,
-  Award,
-  Menu,
-  Clock,
   CheckCircle,
   TrendingUp,
-  FileText,
-  Bell,
+  Clock,
+  AlertCircle,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-const statsData = [
-  {
-    title: "Interviews Conducted",
-    value: "47",
-    change: "+12%",
-    icon: Video,
-    color: "from-blue-500 to-indigo-500",
-    glowColor: "shadow-blue-500/30",
-  },
-  {
-    title: "Upcoming Interviews",
-    value: "8",
-    change: "+3",
-    icon: Calendar,
-    color: "from-emerald-500 to-cyan-500",
-    glowColor: "shadow-emerald-500/30",
-  },
-  {
-    title: "Average Rating",
-    value: "4.8",
-    change: "+0.2",
-    icon: Star,
-    color: "from-yellow-500 to-orange-500",
-    glowColor: "shadow-yellow-500/30",
-  },
-  {
-    title: "This Month Earnings",
-    value: "$2,340",
-    change: "+15%",
-    icon: Award,
-    color: "from-purple-500 to-pink-500",
-    glowColor: "shadow-purple-500/30",
-  },
-]
-
-const upcomingInterviews = [
-  {
-    id: 1,
-    candidate: "John Smith",
-    position: "Frontend Developer",
-    company: "Tech Corp",
-    time: "2:00 PM",
-    date: "Today",
-    status: "scheduled",
-  },
-  {
-    id: 2,
-    candidate: "Sarah Johnson",
-    position: "Backend Developer",
-    company: "StartupXYZ",
-    time: "4:30 PM",
-    date: "Tomorrow",
-    status: "scheduled",
-  },
-  {
-    id: 3,
-    candidate: "Mike Wilson",
-    position: "Full Stack Developer",
-    company: "BigTech Inc",
-    time: "10:00 AM",
-    date: "Dec 15",
-    status: "scheduled",
-  },
-]
+import { Button } from "@/components/ui/button"
+import InterviewCard from "@/components/interviewer/InterviewCard"
+import EmptyState from "@/components/interviewer/EmptyState"
 
 export default function InterviewerDashboard() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [dashboardData, setDashboardData] = useState<InterviewerDashboardData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isLoading) {
-      if (!user) {
-        router.push("/auth/interviewer")
-        return
+    const fetchDashboard = async () => {
+      if (!user) return
+
+      try {
+        setIsLoading(true)
+        const token = localStorage.getItem('access_token')
+        if (!token) throw new Error('No access token')
+
+        const data = await getInterviewerDashboard(token)
+        setDashboardData(data)
+      } catch (err: any) {
+        console.error('Error fetching dashboard:', err)
+        setError(err.message)
+      } finally {
+        setIsLoading(false)
       }
     }
-  }, [user, isLoading, router])
 
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .map((part) => part.charAt(0).toUpperCase())
-      .join("")
-      .substring(0, 2)
+    if (!authLoading && user) {
+      fetchDashboard()
+    }
+  }, [user, authLoading])
 
-  if (isLoading) {
+  if (authLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <div className="w-16 h-16 border-t-4 border-indigo-500 border-solid rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
         </div>
       </div>
     )
   }
 
-  if (!user) {
-    return null
+  if (error && !dashboardData) {
+    return (
+      <InterviewerLayout>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+            <p className="text-rose-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </div>
+        </div>
+      </InterviewerLayout>
+    )
   }
 
+  const statsCards = dashboardData ? [
+    {
+      title: "Total Interviews",
+      value: dashboardData.stats.totalInterviews.toString(),
+      change: "+12%",
+      icon: Video,
+      color: "from-blue-500 to-indigo-500",
+      glowColor: "shadow-blue-500/30",
+    },
+    {
+      title: "Upcoming",
+      value: dashboardData.stats.upcomingInterviews.toString(),
+      change: `+${dashboardData.stats.upcomingInterviews}`,
+      icon: Calendar,
+      color: "from-emerald-500 to-cyan-500",
+      glowColor: "shadow-emerald-500/30",
+    },
+    {
+      title: "Average Rating",
+      value: dashboardData.stats.averageRating.toFixed(1),
+      change: "+0.2",
+      icon: Star,
+      color: "from-yellow-500 to-orange-500",
+      glowColor: "shadow-yellow-500/30",
+    },
+    {
+      title: "Pending Reviews",
+      value: dashboardData.stats.pendingReviews.toString(),
+      change: "-2",
+      icon: CheckCircle,
+      color: "from-purple-500 to-pink-500",
+      glowColor: "shadow-purple-500/30",
+    },
+  ] : []
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 relative overflow-hidden font-['Inter',sans-serif]">
-      {/* Background effects */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-blue-300/15 rounded-full blur-3xl animate-pulse delay-500"></div>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.08)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
-      </div>
+    <InterviewerLayout>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-slate-900">
+            Welcome back, {user.full_name || user.email?.split('@')[0]}!
+          </h1>
+          <p className="text-slate-600 mt-1">Here's your interview overview</p>
+        </div>
 
-      <div className="relative z-10 flex h-screen">
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Header */}
-          <header className="bg-white/80 backdrop-blur-xl border-b border-blue-200/50 px-6 py-4 shadow-sm shadow-blue-500/10">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSidebarOpen(true)}
-                  className="lg:hidden mr-4 text-gray-600 hover:text-gray-800"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-800">
-                    Welcome, {user.full_name || user.email.split("@")[0]}!
-                  </h1>
-                  <p className="text-gray-600">Your interviewer dashboard</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-gray-600 hover:text-gray-800"
-                >
-                  <Bell className="h-5 w-5" />
-                </Button>
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback className="bg-blue-600 text-white text-sm">
-                    {getInitials(user.full_name || user.email || "U")}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="w-8 h-8 border-t-2 border-indigo-500 border-solid rounded-full animate-spin mx-auto"></div>
+              <p className="mt-2 text-gray-600">Loading dashboard...</p>
             </div>
-          </header>
-
-          {/* Dashboard Content */}
-          <main className="flex-1 overflow-y-auto p-6">
+          </div>
+        ) : dashboardData ? (
+          <>
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {statsData.map((stat, index) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {statsCards.map((stat, index) => (
                 <Card
                   key={index}
-                  className="bg-white/80 backdrop-blur-xl border-blue-200/50 hover:border-blue-300/50 transition-all duration-300 shadow-sm shadow-blue-500/10"
+                  className="bg-white/80 backdrop-blur-xl border-indigo-200/50 hover:border-indigo-300/50 transition-all duration-300 shadow-sm shadow-indigo-500/10"
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -215,109 +173,72 @@ export default function InterviewerDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Upcoming Interviews */}
               <div className="lg:col-span-2">
-                <Card className="bg-white/80 backdrop-blur-xl border-blue-200/50 shadow-sm shadow-blue-500/10">
+                <Card className="bg-white/80 backdrop-blur-xl border-indigo-200/50 shadow-sm shadow-indigo-500/10">
                   <CardHeader>
-                    <CardTitle className="text-gray-800 flex items-center">
-                      <Calendar className="mr-2 h-5 w-5 text-blue-600" />
-                      Upcoming Interviews
+                    <CardTitle className="text-gray-800 flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Calendar className="mr-2 h-5 w-5 text-indigo-600" />
+                        Upcoming Interviews
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => router.push('/interviewer/interviews')}
+                        className="text-indigo-600 hover:text-indigo-700"
+                      >
+                        View All
+                      </Button>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {upcomingInterviews.map((interview) => (
-                        <div
-                          key={interview.id}
-                          className="p-4 bg-blue-50/50 rounded-xl border border-blue-200/50 hover:border-blue-300/50 transition-all duration-200"
-                        >
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-gray-800">
-                              {interview.candidate}
-                            </h4>
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 border-blue-300 text-blue-700"
-                            >
-                              <Clock className="w-3 h-3 mr-1" />
-                              {interview.time}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600 text-sm mb-1">
-                            {interview.position} at {interview.company}
-                          </p>
-                          <p className="text-gray-500 text-xs">
-                            {interview.date}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                    <Button className="w-full mt-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      View All Interviews
-                    </Button>
+                    {dashboardData.upcomingInterviews.length > 0 ? (
+                      <div className="space-y-3">
+                        {dashboardData.upcomingInterviews.slice(0, 3).map((interview) => (
+                          <InterviewCard
+                            key={interview.id}
+                            interview={interview}
+                            onClick={() => router.push(`/interviewer/interviews/${interview.id}`)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <EmptyState
+                        icon={Calendar}
+                        title="No Upcoming Interviews"
+                        description="You don't have any interviews scheduled at the moment."
+                      />
+                    )}
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Quick Actions */}
+              {/* Recent Activity */}
               <div>
-                <Card className="bg-white/80 backdrop-blur-xl border-blue-200/50 shadow-sm shadow-blue-500/10 mb-6">
+                <Card className="bg-white/80 backdrop-blur-xl border-indigo-200/50 shadow-sm shadow-indigo-500/10">
                   <CardHeader>
                     <CardTitle className="text-gray-800 flex items-center">
-                      <FileText className="mr-2 h-5 w-5 text-blue-600" />
-                      Quick Actions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl">
-                        <Video className="mr-2 h-4 w-4" />
-                        Start Interview
-                      </Button>
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        Schedule Interview
-                      </Button>
-                      <Button className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white rounded-xl">
-                        <FileText className="mr-2 h-4 w-4" />
-                        View Reports
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Recent Activity */}
-                <Card className="bg-white/80 backdrop-blur-xl border-blue-200/50 shadow-sm shadow-blue-500/10">
-                  <CardHeader>
-                    <CardTitle className="text-gray-800 flex items-center">
-                      <CheckCircle className="mr-2 h-5 w-5 text-blue-600" />
+                      <Clock className="mr-2 h-5 w-5 text-indigo-600" />
                       Recent Activity
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-3">
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-800">Interview Completed</p>
-                        <p className="text-gray-600">Alice Brown - UI/UX Designer</p>
-                        <p className="text-gray-500 text-xs">2 hours ago</p>
-                      </div>
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-800">Interview Scheduled</p>
-                        <p className="text-gray-600">David Lee - Data Analyst</p>
-                        <p className="text-gray-500 text-xs">4 hours ago</p>
-                      </div>
-                      <div className="text-sm">
-                        <p className="font-medium text-gray-800">Report Submitted</p>
-                        <p className="text-gray-600">Emma Wilson - Product Manager</p>
-                        <p className="text-gray-500 text-xs">1 day ago</p>
-                      </div>
+                    <div className="space-y-4">
+                      {dashboardData.recentActivity.map((activity) => (
+                        <div key={activity.id} className="text-sm">
+                          <p className="font-medium text-gray-800">{activity.message}</p>
+                          <p className="text-gray-500 text-xs mt-1">
+                            {new Date(activity.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
               </div>
             </div>
-          </main>
-        </div>
+          </>
+        ) : null}
       </div>
-    </div>
+    </InterviewerLayout>
   )
 }

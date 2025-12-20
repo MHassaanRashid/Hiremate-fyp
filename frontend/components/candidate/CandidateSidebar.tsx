@@ -5,13 +5,11 @@ import * as React from "react"
 import {
   Home,
   FileText,
-  Video,
   Briefcase,
   Settings,
   LogOut,
   User,
   ChevronLeft,
-  ChevronRight,
   Calendar,
   Search,
 } from "lucide-react"
@@ -29,7 +27,6 @@ import {
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
   useSidebar,
@@ -38,15 +35,13 @@ import {
 const sidebarItems = [
   { icon: Home, label: "Dashboard", path: "/candidate" },
   { icon: Search, label: "Find Jobs", path: "/candidate/find-jobs" },
-  { icon: FileText, label: "Resume", path: "/candidate/resume" },
-  { icon: Video, label: "AI Interviews", path: "/ai-interview" },
   { icon: Briefcase, label: "Applications", path: "/candidate/applications" },
-  { icon: Calendar, label: "My Interviews", path: "/candidate/interviews" },
+  { icon: Calendar, label: "Interviews", path: "/candidate/interviews" },
   { icon: User, label: "Profile", path: "/candidate/profile" },
+  { icon: FileText, label: "Resume", path: "/candidate/resume" },
   { icon: Settings, label: "Settings", path: "/candidate/settings" },
 ]
 
-// AppSidebar Component using shadcn sidebar primitives
 function AppSidebar() {
   const { user, logout } = useAuth()
   const router = useRouter()
@@ -54,7 +49,6 @@ function AppSidebar() {
   const { state, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
   const isExpanded = state === "expanded"
 
-  // Find active section based on current path
   const isActive = (path: string) => {
     if (path === "/candidate") {
       return pathname === "/candidate"
@@ -74,7 +68,6 @@ function AppSidebar() {
 
   const handleNavigation = (path: string) => {
     router.push(path)
-    // Close mobile sidebar after navigation
     if (openMobile) {
       setOpenMobile(false)
     }
@@ -90,31 +83,31 @@ function AppSidebar() {
 
   return (
     <Sidebar
-      className="bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700/50"
+      side="left"
+      className="border-r border-slate-200 bg-white"
       collapsible="icon"
     >
       {/* Sidebar Header */}
-      <SidebarHeader className="border-b border-slate-700/50 p-4">
+      <SidebarHeader className="border-b border-slate-200 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0 ring-2 ring-blue-400/20">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
               <span className="text-white font-bold text-lg">HM</span>
             </div>
             {isExpanded && (
               <div className="flex flex-col">
-                <span className="text-xl font-bold text-white whitespace-nowrap">
+                <span className="text-xl font-bold text-slate-900">
                   HireMate
                 </span>
-                <span className="text-xs text-slate-400">Candidate Portal</span>
+                <span className="text-xs text-slate-500">Candidate Portal</span>
               </div>
             )}
           </div>
         </div>
-        {/* Toggle Button - Separate from header */}
         <button
           onClick={toggleSidebar}
           className={cn(
-            "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-slate-900 shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:shadow-xl hover:shadow-blue-500/30",
+            "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-blue-700",
             !isExpanded && "rotate-180"
           )}
         >
@@ -136,31 +129,23 @@ function AppSidebar() {
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden",
                         active
-                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30"
-                          : "text-slate-300 hover:bg-slate-800/50 hover:text-white",
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                         !isExpanded && "justify-center px-3"
                       )}
                       title={!isExpanded ? item.label : undefined}
                     >
-                      {/* Hover effect background */}
-                      {!active && (
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-indigo-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      )}
-
-                      {/* Icon */}
                       <item.icon className={cn(
-                        "h-5 w-5 flex-shrink-0 relative z-10 transition-transform duration-200",
+                        "h-5 w-5 flex-shrink-0 transition-transform duration-200",
                         active ? "scale-110" : "group-hover:scale-110"
                       )} />
 
-                      {/* Label */}
                       {isExpanded && (
-                        <span className="relative z-10 font-medium">
+                        <span className="font-medium">
                           {item.label}
                         </span>
                       )}
 
-                      {/* Active indicator */}
                       {active && (
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-l-full" />
                       )}
@@ -170,24 +155,22 @@ function AppSidebar() {
               })}
 
               {/* Divider */}
-              <div className="my-3 border-t border-slate-700/50" />
+              <div className="my-3 border-t border-slate-200" />
 
               {/* Logout */}
               <SidebarMenuItem>
                 <button
                   onClick={handleLogout}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden text-red-400 hover:bg-red-500/10 hover:text-red-300",
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden text-rose-600 hover:bg-rose-50 hover:text-rose-700",
                     !isExpanded && "justify-center px-3"
                   )}
                   title={!isExpanded ? "Logout" : undefined}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-red-500/0 via-red-500/5 to-red-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                  <LogOut className="h-5 w-5 flex-shrink-0 relative z-10 transition-transform duration-200 group-hover:scale-110" />
+                  <LogOut className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
 
                   {isExpanded && (
-                    <span className="relative z-10 font-medium">
+                    <span className="font-medium">
                       Logout
                     </span>
                   )}
@@ -200,26 +183,26 @@ function AppSidebar() {
 
       {/* Sidebar Footer (User Profile) */}
       {user && (
-        <SidebarFooter className="border-t border-slate-700/50 p-3">
+        <SidebarFooter className="border-t border-slate-200 p-3">
           <div
-            className="flex items-center gap-3 cursor-pointer hover:bg-slate-800/50 rounded-xl p-2.5 transition-all duration-200 group"
-            onClick={() => handleNavigation("/candidate-profile")}
+            className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-all duration-200 group"
+            onClick={() => handleNavigation("/candidate/profile")}
           >
             <div className="relative flex-shrink-0">
-              <Avatar className="h-10 w-10 ring-2 ring-blue-500/20 group-hover:ring-blue-500/40 transition-all duration-200">
+              <Avatar className="h-10 w-10 border-2 border-blue-100 group-hover:border-blue-200 transition-all duration-200">
                 <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
                   {getInitials(user.full_name || user.email || "U")}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
             </div>
             {isExpanded && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate">
+                <p className="text-sm font-semibold text-slate-900 truncate">
                   {user.full_name || "User"}
                 </p>
-                <p className="text-xs text-slate-400 truncate">
+                <p className="text-xs text-slate-500 truncate">
                   {user.email}
                 </p>
               </div>
@@ -237,13 +220,10 @@ interface CandidateSidebarLayoutProps {
 
 export default function CandidateSidebarLayout({ children }: CandidateSidebarLayoutProps) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <SidebarProvider defaultOpen={true}>
         <AppSidebar />
-
-        {/* Main Content Area */}
         <SidebarInset className="flex flex-col min-h-screen">
-          {/* Page Content */}
           <main className="flex-1 w-full">
             {children}
           </main>

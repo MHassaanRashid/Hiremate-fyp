@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
   Calendar,
   ChevronDown,
@@ -30,62 +31,63 @@ import {
   Clock,
   ArrowUpRight,
   FileDown,
+  CheckCircle2,
+  AlertCircle,
+  MoreHorizontal,
+  Mail,
+  Trash2,
+  Sparkles,
+  ArrowRight,
+  Target,
+  Trophy,
+  Eye,
+  TrendingUp,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import toast from "react-hot-toast";
 
-const STATUS_FILTERS: { label: string; value: string; color: string }[] = [
-  { label: "All", value: "all", color: "" },
-  { label: "Applied", value: "applied", color: "bg-blue-50 text-blue-700" },
-  { label: "Viewed", value: "viewed", color: "bg-indigo-50 text-indigo-700" },
-  { label: "Shortlisted", value: "shortlisted", color: "bg-emerald-50 text-emerald-700" },
-  { label: "Interview", value: "interview", color: "bg-purple-50 text-purple-700" },
-  { label: "Accepted", value: "accepted", color: "bg-green-50 text-green-700" },
-  { label: "Rejected", value: "rejected", color: "bg-red-50 text-red-700" },
+const STATUS_FILTERS: { label: string; value: string }[] = [
+  { label: "All Applications", value: "all" },
+  { label: "Applied", value: "applied" },
+  { label: "Viewed", value: "viewed" },
+  { label: "Shortlisted", value: "shortlisted" },
+  { label: "Interview", value: "interview" },
+  { label: "Accepted", value: "accepted" },
+  { label: "Rejected", value: "rejected" },
 ];
 
-const PIPELINE_STAGES: { key: string; label: string }[] = [
-  { key: "applied", label: "Applied" },
-  { key: "viewed", label: "Viewed" },
-  { key: "shortlisted", label: "Shortlisted" },
-  { key: "interview", label: "Interview" },
-  { key: "offer", label: "Offer" },
-  { key: "accepted", label: "Accepted" },
-];
-
-const PAGE_SIZE_OPTIONS = [10, 20, 50];
-
-// Map backend status and pipelineStage into UI badge styles
 function getStatusBadgeClasses(status: ApplicationStatus): string {
-  const base = "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium border";
+  const base = "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold border capitalize";
   switch (status) {
     case "applied":
     case "pending":
-      return cn(base, "bg-blue-50 text-blue-700 border-blue-200");
+      return cn(base, "bg-blue-100 text-blue-700 border-blue-200");
     case "viewed":
     case "reviewing":
-      return cn(base, "bg-indigo-50 text-indigo-700 border-indigo-200");
+      return cn(base, "bg-indigo-100 text-indigo-700 border-indigo-200");
     case "shortlisted":
-      return cn(base, "bg-emerald-50 text-emerald-700 border-emerald-200");
+      return cn(base, "bg-emerald-100 text-emerald-700 border-emerald-200");
     case "interview":
-      return cn(base, "bg-purple-50 text-purple-700 border-purple-200");
+      return cn(base, "bg-purple-100 text-purple-700 border-purple-200");
     case "offer":
-      return cn(base, "bg-amber-50 text-amber-700 border-amber-200");
+      return cn(base, "bg-amber-100 text-amber-700 border-amber-200");
     case "accepted":
-      return cn(base, "bg-green-50 text-green-700 border-green-200");
+      return cn(base, "bg-green-100 text-green-700 border-green-200");
     case "withdrawn":
     case "archived":
-      return cn(base, "bg-slate-50 text-slate-600 border-slate-200");
+      return cn(base, "bg-slate-100 text-slate-600 border-slate-200");
     case "rejected":
     default:
-      return cn(base, "bg-red-50 text-red-700 border-red-200");
+      return cn(base, "bg-rose-100 text-rose-700 border-rose-200");
   }
-}
-
-function formatDate(value?: string | null): string {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatRelativeDate(value?: string | null): string {
@@ -98,9 +100,9 @@ function formatRelativeDate(value?: string | null): string {
   const hours = Math.floor(diffMs / 3600000);
   const days = Math.floor(diffMs / 86400000);
   if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  if (hours < 24) return `${hours} hr${hours === 1 ? "" : "s"} ago`;
-  return `${days} day${days === 1 ? "" : "s"} ago`;
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
 }
 
 export default function CandidateApplicationsPage() {
@@ -116,8 +118,6 @@ export default function CandidateApplicationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState<string>("all");
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
   const [sort, setSort] = useState<"newest" | "oldest">("newest");
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -127,700 +127,393 @@ export default function CandidateApplicationsPage() {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounce search input
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // Fetch applications whenever filters change
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!user) return;
-      const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const fetchApplications = async () => {
+    if (authLoading || !user) return;
+    try {
+      setIsLoading(true);
+      setError(null);
+      const token = localStorage.getItem("access_token");
       if (!token) {
-        setError("Please login to view your applications.");
-        setIsLoading(false);
+        setError("Please sign in to view your applications.");
         return;
       }
 
-      try {
-        setIsLoading(true);
-        setError(null);
+      const params: any = {
+        page,
+        page_size: pageSize,
+        sort_by: sort === "newest" ? "created_at" : "created_at",
+        sort_order: sort === "newest" ? "desc" : "asc",
+      };
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (activeStatus !== "all") params.status = activeStatus;
 
-        const statusValues =
-          activeStatus === "all" ? undefined : [activeStatus.toLowerCase()];
-
-        const data = await getApplications(token, {
-          page,
-          pageSize,
-          search: debouncedSearch || undefined,
-          status: statusValues,
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
-          sort,
-        });
-
-        setApplications(data.items || []);
-        setTotal(data.meta.total);
-        setTotalPages(data.meta.totalPages || 1);
-        setStatusCounts(data.meta.statusCounts || {});
-        setSelectedIds(new Set());
-      } catch (err: any) {
-        console.error("Error loading applications", err);
-        setError(err?.message || "Failed to load applications.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (!authLoading && user) {
-      fetchData();
-    }
-  }, [user, authLoading, page, pageSize, debouncedSearch, activeStatus, dateFrom, dateTo, sort]);
-
-  const hasActiveFilters = useMemo(
-    () => !!debouncedSearch || activeStatus !== "all" || !!dateFrom || !!dateTo || sort !== "newest",
-    [debouncedSearch, activeStatus, dateFrom, dateTo, sort]
-  );
-
-  const clearFilters = () => {
-    setSearchTerm("");
-    setDebouncedSearch("");
-    setActiveStatus("all");
-    setDateFrom("");
-    setDateTo("");
-    setSort("newest");
-    setPage(1);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedIds.size === applications.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(applications.map((a) => a.id)));
+      const data = await getApplications(token, params);
+      setApplications(data.applications || []);
+      setTotal(data.total || 0);
+      setTotalPages(data.total_pages || 1);
+      setStatusCounts(data.status_counts || {});
+    } catch (err: any) {
+      console.error("Error fetching applications:", err);
+      setError(err.message || "Failed to load applications.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const toggleSelectOne = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  useEffect(() => {
+    fetchApplications();
+  }, [page, pageSize, debouncedSearch, activeStatus, sort, authLoading, user]);
 
-  const performBulkAction = async (type: "withdraw" | "archive") => {
+  const stats = useMemo(() => {
+    const totalApps = statusCounts.all || 0;
+    const inProgress = (statusCounts.applied || 0) + (statusCounts.viewed || 0) + (statusCounts.shortlisted || 0);
+    const accepted = statusCounts.accepted || 0;
+    const rejected = statusCounts.rejected || 0;
+    return { totalApps, inProgress, accepted, rejected };
+  }, [statusCounts]);
+
+  const handleBulkWithdraw = async () => {
     if (selectedIds.size === 0) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-    if (!token) {
-      setError("Please login to manage your applications.");
-      return;
-    }
-
     try {
       setIsBulkLoading(true);
-      const ids = Array.from(selectedIds);
-      if (type === "withdraw") {
-        await bulkWithdrawApplications(token, ids);
-      } else {
-        await bulkArchiveApplications(token, ids);
-      }
-
-      // Optimistically update UI
-      setApplications((prev) =>
-        prev.map((a) =>
-          selectedIds.has(a.id)
-            ? { ...a, status: type === "withdraw" ? "withdrawn" : "archived" }
-            : a
-        )
-      );
-
-      // Optionally refetch counts after bulk update
-      setPage(1);
+      const token = localStorage.getItem("access_token");
+      if (!token) throw new Error("Not authenticated");
+      await bulkWithdrawApplications(token, Array.from(selectedIds));
+      toast.success(`Withdrew ${selectedIds.size} application(s)`);
+      setSelectedIds(new Set());
+      fetchApplications();
     } catch (err: any) {
-      console.error("Bulk action failed", err);
-      setError(err?.message || "Bulk action failed.");
+      toast.error(err.message || "Failed to withdraw applications");
     } finally {
       setIsBulkLoading(false);
     }
   };
 
-  const inProgressCount = useMemo(() => {
-    const mapKeys = ["applied", "pending", "reviewing", "viewed", "shortlisted", "interview"];
-    return mapKeys.reduce((acc, key) => acc + (statusCounts[key] || 0), 0);
-  }, [statusCounts]);
+  const handleExport = async () => {
+    try {
+      const token = localStorage.getItem("access_token");
+      if (!token) throw new Error("Not authenticated");
+      const blob = await exportApplications(token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `applications_${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Applications exported successfully");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to export applications");
+    }
+  };
 
-  const acceptedCount = statusCounts["accepted"] || 0;
-  const rejectedCount = statusCounts["rejected"] || 0;
-
-  // Authentication guard
-  if (authLoading || !user) {
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-14 h-14 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">Loading your applications...</p>
+      <CandidateLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
-      </div>
+      </CandidateLayout>
     );
   }
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+
           {/* Header */}
-          <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">My Applications</h1>
-              <p className="mt-1 text-sm text-gray-600">
-                Track your job applications, stay on top of next steps, and manage your pipeline.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 font-medium">
-                  <Briefcase className="w-4 h-4 mr-1" />
-                  {total} applications
-                </span>
-              </div>
-              <Link href="/homepage" className="w-full sm:w-auto">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2 shadow-md shadow-blue-500/30">
-                  Find New Jobs
-                  <ArrowUpRight className="w-4 h-4" />
-                </Button>
-              </Link>
-            </div>
-          </header>
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+              My Applications
+            </h1>
+            <p className="text-slate-600 text-lg">
+              Track and manage your job applications
+            </p>
+          </div>
 
-          {/* Stats overview */}
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500">Total Applications</p>
-                <p className="mt-1 text-2xl font-semibold text-gray-900">{total}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-blue-600" />
-              </div>
-            </div>
-            <div className="rounded-2xl bg-white/90 border border-emerald-100 shadow-sm p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-gray-500">In Progress</p>
-                <p className="mt-1 text-2xl font-semibold text-emerald-700">{inProgressCount}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-emerald-600" />
-              </div>
-            </div>
-            <div className="rounded-2xl bg-white/90 border border-slate-100 shadow-sm p-4 flex items-center justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Accepted</p>
-                  <p className="text-sm font-semibold text-green-600">{acceptedCount}</p>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-xs uppercase tracking-wide text-gray-500">Rejected</p>
-                  <p className="text-sm font-semibold text-red-600">{rejectedCount}</p>
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-slate-500" />
-              </div>
-            </div>
-          </section>
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <StatCard
+              icon={Briefcase}
+              label="Total Applications"
+              value={stats.totalApps}
+              color="blue"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="In Progress"
+              value={stats.inProgress}
+              color="amber"
+            />
+            <StatCard
+              icon={CheckCircle2}
+              label="Accepted"
+              value={stats.accepted}
+              color="emerald"
+            />
+            <StatCard
+              icon={AlertCircle}
+              label="Rejected"
+              value={stats.rejected}
+              color="rose"
+            />
+          </div>
 
-          {/* Filter + bulk actions bar */}
-          <section className="space-y-3">
-            {/* Search + filters */}
-            <div className="flex flex-col gap-3 md:flex-row md:items-center">
-              <div className="flex-1 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    value={searchTerm}
-                    onChange={(e) => {
-                      setSearchTerm(e.target.value);
-                      setPage(1);
-                    }}
-                    placeholder="Search by job title or company"
-                    className="pl-9 bg-white/90 border-blue-100 focus-visible:ring-blue-500"
-                    aria-label="Search applications by job title or company"
-                  />
+          {/* Filters & Actions */}
+          <Card className="border-0 shadow-lg bg-white">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                      placeholder="Search by job title or company..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-12 h-12 border-slate-200"
+                    />
+                  </div>
                 </div>
-                <Button
-                  variant="outline"
-                  className="hidden md:inline-flex items-center gap-2 border-blue-100 text-gray-700"
-                >
-                  <Filter className="w-4 h-4" />
-                  Filters
-                </Button>
-              </div>
-
-              <div className="flex flex-wrap gap-2 md:justify-end">
-                <select
-                  value={sort}
-                  onChange={(e) => {
-                    setSort(e.target.value as "newest" | "oldest");
-                    setPage(1);
-                  }}
-                  className="h-9 rounded-lg border border-blue-100 bg-white/90 px-3 text-xs text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  aria-label="Sort applications"
-                >
-                  <option value="newest">Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                </select>
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <span>Applied from</span>
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => {
-                      setDateFrom(e.target.value);
-                      setPage(1);
-                    }}
-                    className="h-8 w-32 border-blue-100 bg-white/90 text-xs"
-                  />
-                  <span>to</span>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => {
-                      setDateTo(e.target.value);
-                      setPage(1);
-                    }}
-                    className="h-8 w-32 border-blue-100 bg-white/90 text-xs"
-                  />
-                </div>
-                {hasActiveFilters && (
+                <div className="flex gap-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" className="h-12 border-slate-200">
+                        <Filter className="w-4 h-4 mr-2" />
+                        {STATUS_FILTERS.find(f => f.value === activeStatus)?.label || "Filter"}
+                        <ChevronDown className="w-4 h-4 ml-2" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      {STATUS_FILTERS.map((filter) => (
+                        <DropdownMenuItem
+                          key={filter.value}
+                          onClick={() => setActiveStatus(filter.value)}
+                          className={cn(
+                            "cursor-pointer",
+                            activeStatus === filter.value && "bg-blue-50 text-blue-700"
+                          )}
+                        >
+                          {filter.label}
+                          {statusCounts[filter.value] !== undefined && (
+                            <span className="ml-auto text-xs text-slate-500">
+                              {statusCounts[filter.value]}
+                            </span>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                   <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearFilters}
-                    className="h-9 text-xs text-gray-600 hover:text-gray-800"
+                    variant="outline"
+                    onClick={handleExport}
+                    className="h-12 border-slate-200"
                   >
-                    <X className="w-3 h-3 mr-1" />
-                    Clear filters
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Export
                   </Button>
-                )}
+                </div>
               </div>
-            </div>
 
-            {/* Status filter chips */}
-            <div className="flex flex-wrap gap-2">
-              {STATUS_FILTERS.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => {
-                    setActiveStatus(f.value);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium border transition-colors flex items-center gap-1",
-                    activeStatus === f.value
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/30"
-                      : f.color || "bg-white/80 text-gray-600 border-blue-100 hover:bg-blue-50"
-                  )}
-                  aria-pressed={activeStatus === f.value}
-                >
-                  {f.label}
-                  {f.value !== "all" && statusCounts[f.value] != null && (
-                    <span className="ml-1 text-[10px] opacity-80">{statusCounts[f.value] || 0}</span>
-                  )}
-                </button>
+              {selectedIds.size > 0 && (
+                <div className="mt-4 flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <span className="text-sm font-medium text-blue-900">
+                    {selectedIds.size} application(s) selected
+                  </span>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedIds(new Set())}
+                      className="border-blue-200"
+                    >
+                      Clear
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleBulkWithdraw}
+                      disabled={isBulkLoading}
+                    >
+                      {isBulkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Withdraw"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Applications List */}
+          {isLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full rounded-xl" />
               ))}
             </div>
-
-            {/* Bulk actions */}
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3 text-sm text-gray-600">
-                <label className="inline-flex items-center gap-2 text-xs cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                    checked={applications.length > 0 && selectedIds.size === applications.length}
-                    onChange={toggleSelectAll}
-                    aria-label="Select all applications on this page"
-                  />
-                  Select all
-                </label>
-                <span className="text-xs text-gray-500">
-                  {selectedIds.size} selected
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2">
+          ) : error ? (
+            <Card className="border-0 shadow-lg bg-white">
+              <CardContent className="p-12 text-center">
+                <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Error Loading Applications</h3>
+                <p className="text-slate-600">{error}</p>
+              </CardContent>
+            </Card>
+          ) : applications.length === 0 ? (
+            <Card className="border-0 shadow-lg bg-white">
+              <CardContent className="p-12 text-center">
+                <Briefcase className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">No applications yet</h3>
+                <p className="text-slate-500 mb-6">Start applying to jobs to see them here</p>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={selectedIds.size === 0 || isBulkLoading}
-                  onClick={() => performBulkAction("withdraw")}
-                  className="border-red-200 text-red-600 hover:bg-red-50"
+                  onClick={() => window.location.href = '/candidate/find-jobs'}
+                  className="bg-blue-600 hover:bg-blue-700"
                 >
-                  {isBulkLoading ? (
-                    <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                  ) : (
-                    <X className="w-3 h-3 mr-2" />
-                  )}
-                  Withdraw selected
+                  Browse Jobs
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={selectedIds.size === 0 || isBulkLoading}
-                  onClick={() => performBulkAction("archive")}
-                  className="border-slate-200 text-slate-700 hover:bg-slate-50"
-                >
-                  Archive selected
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50 flex items-center gap-2"
-                  onClick={() => {
-                    // export is handled by separate button; here we just show hint
-                    document.getElementById("applications-export-trigger")?.click();
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {applications.map((app) => (
+                <ApplicationCard
+                  key={app.id}
+                  application={app}
+                  isSelected={selectedIds.has(app.id)}
+                  onToggleSelect={(id) => {
+                    const newSet = new Set(selectedIds);
+                    if (newSet.has(id)) {
+                      newSet.delete(id);
+                    } else {
+                      newSet.add(id);
+                    }
+                    setSelectedIds(newSet);
                   }}
-                >
-                  <FileDown className="w-3 h-3" />
-                  Export
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          {/* Error banner */}
-          {error && (
-            <div
-              className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700"
-              role="alert"
-            >
-              {error}
+                />
+              ))}
             </div>
           )}
-
-          {/* Applications list */}
-          <section aria-live="polite" aria-busy={isLoading} className="space-y-4">
-            {isLoading ? (
-              <ApplicationsSkeleton />
-            ) : applications.length === 0 ? (
-              <EmptyApplicationsState />
-            ) : (
-              <div className="space-y-3">
-                {applications.map((app) => {
-                  const pipelineIndex = PIPELINE_STAGES.findIndex(
-                    (s) => s.key === app.pipelineStage
-                  );
-                  return (
-                    <article
-                      key={app.id}
-                      className="rounded-2xl bg-white/95 border border-blue-100 shadow-sm hover:shadow-md transition-shadow overflow-hidden"
-                    >
-                      <div className="flex flex-col gap-3 p-4 md:p-5">
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div className="flex flex-1 gap-3">
-                            <div className="flex-shrink-0">
-                              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-700 font-semibold">
-                                {app.company?.charAt(0) || "?"}
-                              </div>
-                            </div>
-                            <div className="space-y-1">
-                              <h2 className="text-sm md:text-base font-semibold text-gray-900 flex items-center gap-2">
-                                <span>{app.jobTitle}</span>
-                                <Badge className={getStatusBadgeClasses(app.status)}>
-                                  {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                                </Badge>
-                              </h2>
-                              <p className="text-xs text-gray-600 flex items-center gap-1">
-                                <Building2 className="w-3 h-3" />
-                                {app.company}
-                              </p>
-                              <div className="flex flex-wrap gap-3 text-[11px] text-gray-500">
-                                <span className="inline-flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  Applied {formatDate(app.appliedDate)}
-                                </span>
-                                {app.lastUpdatedAt && (
-                                  <span className="inline-flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    Updated {formatRelativeDate(app.lastUpdatedAt)}
-                                  </span>
-                                )}
-                                {app.location && <span>{app.location}</span>}
-                                {app.employmentType && <span>{app.employmentType}</span>}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-3 md:gap-4">
-                            <label className="mt-1 inline-flex items-center gap-2 text-xs text-gray-500">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
-                                checked={selectedIds.has(app.id)}
-                                onChange={() => toggleSelectOne(app.id)}
-                                aria-label={`Select application for ${app.jobTitle} at ${app.company}`}
-                              />
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setExpandedId((prev) => (prev === app.id ? null : app.id))
-                              }
-                              className="inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900"
-                              aria-expanded={expandedId === app.id}
-                            >
-                              View details
-                              <ChevronDown
-                                className={cn(
-                                  "w-3 h-3 transition-transform",
-                                  expandedId === app.id && "rotate-180"
-                                )}
-                              />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Pipeline visualization */}
-                        <div className="mt-2">
-                          <div className="flex items-center gap-2 overflow-x-auto">
-                            {PIPELINE_STAGES.map((stage, index) => {
-                              const isPast = pipelineIndex > -1 && index <= pipelineIndex;
-                              const isCurrent = pipelineIndex === index;
-                              return (
-                                <div key={stage.key} className="flex items-center gap-2">
-                                  <div className="flex flex-col items-center min-w-[72px]">
-                                    <div
-                                      className={cn(
-                                        "h-6 w-6 rounded-full border flex items-center justify-center text-[10px] font-semibold",
-                                        isPast
-                                          ? "bg-blue-600 border-blue-600 text-white"
-                                          : "bg-white border-blue-100 text-blue-500"
-                                      )}
-                                      aria-label={`Stage ${stage.label}`}
-                                    >
-                                      {index + 1}
-                                    </div>
-                                    <span className="mt-1 text-[10px] text-gray-600 whitespace-nowrap">
-                                      {stage.label}
-                                    </span>
-                                  </div>
-                                  {index < PIPELINE_STAGES.length - 1 && (
-                                    <div
-                                      className={cn(
-                                        "h-0.5 w-8 rounded-full",
-                                        index < pipelineIndex
-                                          ? "bg-blue-500"
-                                          : "bg-blue-100"
-                                      )}
-                                      aria-hidden="true"
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {app.nextStep && (
-                            <p className="mt-2 text-[11px] text-blue-800 bg-blue-50/70 inline-flex px-2 py-1 rounded-full">
-                              Next step: {app.nextStep}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Expanded details */}
-                        {expandedId === app.id && (
-                          <div className="mt-3 border-t border-blue-50 pt-3 text-xs text-gray-700 grid gap-3 md:grid-cols-3">
-                            <div className="md:col-span-2 space-y-2">
-                              <p className="font-medium text-gray-900">Application timeline</p>
-                              <ul className="space-y-2">
-                                <li className="flex items-start gap-2">
-                                  <div className="mt-1 h-2 w-2 rounded-full bg-blue-500" />
-                                  <div>
-                                    <p className="text-xs text-gray-800">Applied</p>
-                                    <p className="text-[11px] text-gray-500">
-                                      {formatDate(app.appliedDate)}
-                                    </p>
-                                  </div>
-                                </li>
-                                {app.lastUpdatedAt && (
-                                  <li className="flex items-start gap-2">
-                                    <div className="mt-1 h-2 w-2 rounded-full bg-emerald-500" />
-                                    <div>
-                                      <p className="text-xs text-gray-800">
-                                        Status updated to {app.status}
-                                      </p>
-                                      <p className="text-[11px] text-gray-500">
-                                        {formatDate(app.lastUpdatedAt)} ({formatRelativeDate(app.lastUpdatedAt)})
-                                      </p>
-                                    </div>
-                                  </li>
-                                )}
-                              </ul>
-                            </div>
-                            <div className="space-y-2">
-                              <p className="font-medium text-gray-900">Actions</p>
-                              <div className="flex flex-col gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="justify-between border-red-200 text-red-600 hover:bg-red-50"
-                                  onClick={() => {
-                                    setSelectedIds(new Set([app.id]));
-                                    performBulkAction("withdraw");
-                                  }}
-                                >
-                                  Withdraw application
-                                  <X className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="justify-between border-slate-200 text-slate-700 hover:bg-slate-50"
-                                  onClick={() => {
-                                    setSelectedIds(new Set([app.id]));
-                                    performBulkAction("archive");
-                                  }}
-                                >
-                                  Archive
-                                  <ChevronDown className="w-3 h-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </section>
 
           {/* Pagination */}
-          {applications.length > 0 && (
-            <section className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between pt-2 border-t border-blue-50">
-              <div className="flex items-center gap-3 text-xs text-gray-600">
-                <span>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-slate-600">
+                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, total)} of {total} applications
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="flex items-center px-4 text-sm font-medium">
                   Page {page} of {totalPages}
                 </span>
-                <span className="hidden sm:inline">
-                  Showing {(page - 1) * pageSize + 1}–
-                  {Math.min(page * pageSize, total)} of {total} applications
-                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1 text-xs text-gray-600">
-                  <span>Rows per page</span>
-                  <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setPage(1);
-                    }}
-                    className="h-8 rounded-md border border-blue-100 bg-white/90 px-2 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  >
-                    {PAGE_SIZE_OPTIONS.map((size) => (
-                      <option key={size} value={size}>
-                        {size}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="inline-flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 border-blue-100"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    aria-label="Previous page"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 border-blue-100"
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    aria-label="Next page"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </section>
+            </div>
           )}
-
-          {/* Hidden export trigger used by the Export button */}
-          <button
-            id="applications-export-trigger"
-            type="button"
-            className="hidden"
-            onClick={async () => {
-              const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-              if (!token) {
-                setError("Please login to export your applications.");
-                return;
-              }
-              try {
-                const csv = await exportApplications(token, "csv");
-                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement("a");
-                link.href = url;
-                link.setAttribute("download", "applications.csv");
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(url);
-              } catch (err: any) {
-                setError(err?.message || "Failed to export applications.");
-              }
-            }}
-          />
         </div>
       </div>
     </CandidateLayout>
   );
 }
 
-function ApplicationsSkeleton() {
+function StatCard({ icon: Icon, label, value, color }: {
+  icon: any;
+  label: string;
+  value: number;
+  color: 'blue' | 'amber' | 'emerald' | 'rose';
+}) {
+  const colorClasses = {
+    blue: 'from-blue-500 to-blue-600',
+    amber: 'from-amber-500 to-amber-600',
+    emerald: 'from-emerald-500 to-emerald-600',
+    rose: 'from-rose-500 to-rose-600',
+  };
+
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, idx) => (
-        <div key={idx} className="rounded-2xl bg-white/90 border border-blue-50 p-4 space-y-3">
-          <Skeleton className="h-5 w-1/3" />
-          <Skeleton className="h-4 w-1/4" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-8 w-full" />
+    <Card className="border-0 shadow-lg bg-white">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className={cn(
+            "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg",
+            colorClasses[color]
+          )}>
+            <Icon className="w-6 h-6" />
+          </div>
         </div>
-      ))}
-    </div>
+        <div>
+          <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>
+          <p className="text-sm text-slate-600 font-medium">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
-function EmptyApplicationsState() {
+function ApplicationCard({ application, isSelected, onToggleSelect }: {
+  application: ApplicationListItem;
+  isSelected: boolean;
+  onToggleSelect: (id: string) => void;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-4">
-        <Briefcase className="w-10 h-10 text-blue-500" />
-      </div>
-      <h2 className="text-lg font-semibold text-gray-900">You haven&apos;t applied to any jobs yet</h2>
-      <p className="mt-2 max-w-md text-sm text-gray-600">
-        Once you start applying through HireMate, all your applications will appear here so you can
-        track their status in one place.
-      </p>
-      <Link href="/homepage" className="mt-4">
-        <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2">
-          Browse Jobs
-          <ArrowUpRight className="w-4 h-4" />
-        </Button>
-      </Link>
-      <div className="mt-4 max-w-md text-xs text-gray-500">
-        Tip: Tailor your resume to each job and keep your profile up to date to increase your
-        chances of getting shortlisted.
-      </div>
-    </div>
+    <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all group">
+      <CardContent className="p-6">
+        <div className="flex items-start gap-4">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => onToggleSelect(application.id)}
+            className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+          />
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
+            {application.job_title?.charAt(0) || 'J'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-1">
+                  {application.job_title}
+                </h3>
+                <p className="text-sm text-slate-600 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
+                  {application.company_name}
+                </p>
+              </div>
+              <Badge className={getStatusBadgeClasses(application.status)}>
+                {application.status}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-6 text-sm text-slate-500">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4" />
+                Applied {formatRelativeDate(application.applied_at)}
+              </span>
+              {application.last_updated && (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  Updated {formatRelativeDate(application.last_updated)}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
