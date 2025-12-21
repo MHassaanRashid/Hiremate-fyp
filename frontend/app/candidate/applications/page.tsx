@@ -198,7 +198,8 @@ export default function CandidateApplicationsPage() {
     try {
       const token = localStorage.getItem("access_token");
       if (!token) throw new Error("Not authenticated");
-      const blob = await exportApplications(token);
+      const csvText = await exportApplications(token);
+      const blob = new Blob([csvText], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

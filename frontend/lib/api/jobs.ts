@@ -9,8 +9,13 @@ export interface Job {
     salary_range?: string;
     description?: string;
     requirements?: string[];
+    required_skills?: string[];
     posted_date?: string;
+    created_at?: string;
     logo_url?: string;
+    is_featured?: boolean;
+    experience_level?: string;
+    applicants_count?: number;
 }
 
 export const getJobs = async (token: string, search?: string, location?: string, type?: string) => {

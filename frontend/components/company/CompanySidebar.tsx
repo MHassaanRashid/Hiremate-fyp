@@ -1,121 +1,230 @@
+// frontend/components/company/CompanySidebar.tsx
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { X, Briefcase, Users, Calendar, Settings, LayoutDashboard, LogOut } from "lucide-react"
+import * as React from "react"
+import {
+  Home,
+  Briefcase,
+  Users,
+  Calendar,
+  Settings,
+  LogOut,
+  ChevronLeft,
+} from "lucide-react"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import toast from "react-hot-toast"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarProvider,
+  useSidebar,
+} from "@/components/ui/sidebar"
 
 const sidebarItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/company" },
+  { icon: Home, label: "Dashboard", path: "/company" },
   { icon: Briefcase, label: "My Jobs", path: "/company/jobs" },
   { icon: Users, label: "Candidates", path: "/company/candidates" },
   { icon: Calendar, label: "Interviews", path: "/company/interviews" },
   { icon: Settings, label: "Settings", path: "/company/settings" },
-  { icon: LogOut, label: "Logout", path: "/logout" },
 ]
 
-export default function CompanySidebar({
-  sidebarOpen,
-  setSidebarOpen,
-}: {
-  sidebarOpen: boolean
-  setSidebarOpen: (open: boolean) => void
-}) {
+function AppSidebar() {
   const { user, logout } = useAuth()
   const router = useRouter()
-  const [activeSection, setActiveSection] = useState("Dashboard")
+  const pathname = usePathname()
+  const { state, openMobile, setOpenMobile, toggleSidebar } = useSidebar()
+  const isExpanded = state === "expanded"
 
-  const getInitials = (name: string) =>
-    name.split(" ").map((part) => part[0].toUpperCase()).join("").substring(0, 2)
+  const isActive = (path: string) => {
+    if (path === "/company") {
+      return pathname === "/company"
+    }
+    return pathname.startsWith(path)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+      toast.success("Logged out successfully")
+      router.push("/auth/company")
+    } catch (error) {
+      toast.error("Failed to logout")
+    }
+  }
+
+  const handleNavigation = (path: string) => {
+    router.push(path)
+    if (openMobile) {
+      setOpenMobile(false)
+    }
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("")
+      .substring(0, 2)
+  }
 
   return (
-    <div
-      className={`${sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } fixed inset-y-0 left-0 z-50 w-64 bg-white/80 backdrop-blur-xl border-r border-blue-200/50 shadow-lg transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}
+    <Sidebar
+      side="left"
+      className="border-r border-slate-200 bg-white"
+      collapsible="icon"
     >
-      <div className="flex items-center justify-between h-16 px-6 border-b border-blue-200/50">
-        <div className="flex items-center">
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
-            <span className="text-white font-bold text-lg">H</span>
+      {/* Sidebar Header */}
+      <SidebarHeader className="border-b border-slate-200 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
+              <span className="text-white font-bold text-lg">HM</span>
+            </div>
+            {isExpanded && (
+              <div className="flex flex-col">
+                <span className="text-xl font-bold text-slate-900">
+                  HireMate
+                </span>
+                <span className="text-xs text-slate-500">Company Portal</span>
+              </div>
+            )}
           </div>
-          <span className="ml-2 text-xl font-bold text-gray-800">HireMate</span>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSidebarOpen(false)}
-          className="lg:hidden text-slate-400 hover:text-white"
+        <button
+          onClick={toggleSidebar}
+          className={cn(
+            "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-blue-700",
+            !isExpanded && "rotate-180"
+          )}
         >
-          <X className="h-5 w-5" />
-        </Button>
-      </div>
+          <ChevronLeft className="w-3 h-3 text-white" />
+        </button>
+      </SidebarHeader>
 
-      <nav className="mt-8 px-4">
-        <div className="space-y-2">
-          {sidebarItems.map((item, index) => {
-            const Icon = item.icon
-            const isActive = item.label === activeSection
+      {/* Sidebar Content */}
+      <SidebarContent className="px-3 py-4">
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="space-y-1">
+              {sidebarItems.map((item) => {
+                const active = isActive(item.path)
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <button
+                      onClick={() => handleNavigation(item.path)}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden",
+                        active
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                        !isExpanded && "justify-center px-3"
+                      )}
+                      title={!isExpanded ? item.label : undefined}
+                    >
+                      <item.icon className={cn(
+                        "h-5 w-5 flex-shrink-0 transition-transform duration-200",
+                        active ? "scale-110" : "group-hover:scale-110"
+                      )} />
 
-            return (
-              <Button
-                key={index}
-                variant="ghost"
-                className={`w-full justify-start text-left py-3 px-4 rounded-xl transition-all duration-200 gap-3 ${isActive
-                  ? "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 border border-blue-300"
-                  : "text-gray-600 hover:text-gray-800 hover:bg-blue-50"
-                  }`}
-                onClick={() => {
-                  if (item.label === "Logout") {
-                    logout()
-                  } else {
-                    setActiveSection(item.label)
-                    router.push(item.path)
-                  }
-                }}
-              >
-                <Icon className={`h-5 w-5 ${isActive ? "text-blue-700" : "text-gray-400"}`} />
-                <span>{item.label}</span>
-              </Button>
-            )
-          })}
-        </div>
-      </nav>
+                      {isExpanded && (
+                        <span className="font-medium">
+                          {item.label}
+                        </span>
+                      )}
 
-      {/* User Profile in Sidebar */}
-      <div
-        className="absolute bottom-6 left-4 right-4 cursor-pointer"
-        onClick={() => router.push("/company/profile")}
-      >
-        <Card className="bg-blue-50/50 border-blue-200/50">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <Avatar className="h-10 w-10">
+                      {active && (
+                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-l-full" />
+                      )}
+                    </button>
+                  </SidebarMenuItem>
+                )
+              })}
+
+              {/* Divider */}
+              <div className="my-3 border-t border-slate-200" />
+
+              {/* Logout */}
+              <SidebarMenuItem>
+                <button
+                  onClick={handleLogout}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden text-rose-600 hover:bg-rose-50 hover:text-rose-700",
+                    !isExpanded && "justify-center px-3"
+                  )}
+                  title={!isExpanded ? "Logout" : undefined}
+                >
+                  <LogOut className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
+
+                  {isExpanded && (
+                    <span className="font-medium">
+                      Logout
+                    </span>
+                  )}
+                </button>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      {/* Sidebar Footer (User Profile) */}
+      {user && (
+        <SidebarFooter className="border-t border-slate-200 p-3">
+          <div
+            className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-all duration-200 group"
+            onClick={() => handleNavigation("/company/profile")}
+          >
+            <div className="relative flex-shrink-0">
+              <Avatar className="h-10 w-10 border-2 border-blue-100 group-hover:border-blue-200 transition-all duration-200">
                 <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback className="bg-blue-600 text-white">
-                  {getInitials(user?.full_name || user?.email || "U")}
+                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
+                  {getInitials(user.full_name || user.email || "U")}
                 </AvatarFallback>
               </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {user?.full_name || "User"}
-                </p>
-                <div className="flex items-center">
-                  <p className="text-xs text-gray-600 truncate mr-2">
-                    {user?.email}
-                  </p>
-                  <Badge variant="outline" className="text-xs">
-                    {user?.role || "recruiter"}
-                  </Badge>
-                </div>
-              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            {isExpanded && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-900 truncate">
+                  {user.full_name || "Company"}
+                </p>
+                <p className="text-xs text-slate-500 truncate">
+                  {user.email}
+                </p>
+              </div>
+            )}
+          </div>
+        </SidebarFooter>
+      )}
+    </Sidebar>
+  )
+}
+
+interface CompanySidebarLayoutProps {
+  children: React.ReactNode
+}
+
+export default function CompanySidebarLayout({ children }: CompanySidebarLayoutProps) {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <SidebarProvider defaultOpen={true}>
+        <AppSidebar />
+        <SidebarInset className="flex flex-col min-h-screen">
+          <main className="flex-1 w-full">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
     </div>
   )
 }

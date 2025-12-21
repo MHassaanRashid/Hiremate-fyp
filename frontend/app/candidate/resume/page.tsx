@@ -429,7 +429,7 @@ export default function ResumeBuilderPage() {
           </div>
         </div>
       </div>
-    </CandidateLayout>
+    </CandidateLayout >
   )
 }
 

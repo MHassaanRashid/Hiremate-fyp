@@ -78,6 +78,13 @@ export default function CandidateDashboard({
   const completedItems = strengthItems.filter(Boolean).length;
   const strengthPercentage = Math.round((completedItems / strengthItems.length) * 100);
 
+  // Helper function to format trend values
+  const formatTrend = (trend?: number): string => {
+    if (trend === undefined || trend === null) return '';
+    const sign = trend >= 0 ? '+' : '';
+    return `${sign}${trend.toFixed(1)}%`;
+  };
+
   const getStatusColor = (status: Application['status']) => {
     switch (status) {
       case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
@@ -97,7 +104,7 @@ export default function CandidateDashboard({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
-              Welcome back, {profile.full_name?.split(' ')[0] || 'there'}! 👋
+              Welcome back, {profile.full_name?.split(' ')[0] || profile.name?.split(' ')[0] || 'there'}! 👋
             </h1>
             <p className="text-slate-600 text-lg">Here's what's happening with your job search today</p>
           </div>
@@ -115,33 +122,33 @@ export default function CandidateDashboard({
           <StatCard
             icon={Briefcase}
             label="Applications"
-            value={stats.total_applications}
-            trend="+12%"
-            trendUp={true}
+            value={stats.applicationsSubmitted}
+            trend={formatTrend(stats.applicationsTrend)}
+            trendUp={stats.applicationsTrend !== undefined ? stats.applicationsTrend >= 0 : true}
             color="blue"
           />
           <StatCard
             icon={Eye}
             label="Profile Views"
-            value={stats.profile_views}
-            trend="+8%"
-            trendUp={true}
+            value={stats.profileViews}
+            trend={formatTrend(stats.profileViewsTrend)}
+            trendUp={stats.profileViewsTrend !== undefined ? stats.profileViewsTrend >= 0 : true}
             color="emerald"
           />
           <StatCard
             icon={Calendar}
             label="Interviews"
-            value={stats.interviews_scheduled}
-            trend="+3"
-            trendUp={true}
+            value={stats.interviewsScheduled}
+            trend={formatTrend(stats.interviewsTrend)}
+            trendUp={stats.interviewsTrend !== undefined ? stats.interviewsTrend >= 0 : true}
             color="purple"
           />
           <StatCard
             icon={Target}
-            label="Shortlisted"
-            value={stats.shortlisted}
-            trend="+5"
-            trendUp={true}
+            label="Profile Score"
+            value={stats.profileScore}
+            trend={formatTrend(stats.profileScoreTrend)}
+            trendUp={stats.profileScoreTrend !== undefined ? stats.profileScoreTrend >= 0 : true}
             color="amber"
           />
         </div>
@@ -187,15 +194,15 @@ export default function CandidateDashboard({
                       >
                         <div className="flex items-center gap-4 flex-1">
                           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                            {app.job_title.charAt(0)}
+                            {app.jobTitle.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
-                              {app.job_title}
+                              {app.jobTitle}
                             </h4>
                             <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
                               <Building className="w-3 h-3" />
-                              {app.company_name}
+                              {app.company}
                             </p>
                           </div>
                         </div>
@@ -243,15 +250,15 @@ export default function CandidateDashboard({
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex-1">
                             <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors mb-1">
-                              {job.job_title}
+                              {job.title}
                             </h4>
                             <p className="text-sm text-slate-600 flex items-center gap-2">
                               <Building className="w-3 h-3" />
-                              {job.company_name}
+                              {job.company}
                             </p>
                           </div>
                           <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                            {job.match_score}% Match
+                            {job.matchPercentage}% Match
                           </Badge>
                         </div>
                         <div className="flex items-center gap-4 text-sm text-slate-500">
@@ -260,12 +267,8 @@ export default function CandidateDashboard({
                             {job.location}
                           </span>
                           <span className="flex items-center gap-1">
-                            <DollarSign className="w-3 h-3" />
-                            {job.salary_range}
-                          </span>
-                          <span className="flex items-center gap-1">
                             <Clock className="w-3 h-3" />
-                            {job.job_type}
+                            {job.type}
                           </span>
                         </div>
                       </div>
@@ -296,10 +299,10 @@ export default function CandidateDashboard({
                   <Progress value={strengthPercentage} className="h-2 bg-white/20" />
                 </div>
                 <div className="space-y-2 mb-4">
-                  <ProfileStrengthItem completed={profileStrength.has_resume} label="Resume uploaded" />
-                  <ProfileStrengthItem completed={profileStrength.has_experience} label="Experience added" />
-                  <ProfileStrengthItem completed={profileStrength.has_education} label="Education added" />
-                  <ProfileStrengthItem completed={profileStrength.has_skills} label="Skills added" />
+                  <ProfileStrengthItem completed={profileStrength.resume} label="Resume uploaded" />
+                  <ProfileStrengthItem completed={profileStrength.experience} label="Experience added" />
+                  <ProfileStrengthItem completed={profileStrength.education} label="Education added" />
+                  <ProfileStrengthItem completed={profileStrength.skills} label="Skills added" />
                 </div>
                 <Button
                   onClick={() => router.push('/candidate/profile')}
@@ -344,15 +347,15 @@ export default function CandidateDashboard({
                         onClick={() => router.push('/candidate/interviews')}
                       >
                         <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-slate-900 text-sm">{interview.job_title}</h4>
+                          <h4 className="font-semibold text-slate-900 text-sm">{interview.position}</h4>
                           <Video className="w-4 h-4 text-blue-600" />
                         </div>
-                        <p className="text-xs text-slate-600 mb-2">{interview.company_name}</p>
+                        <p className="text-xs text-slate-600 mb-2">{interview.company}</p>
                         <div className="flex items-center gap-2 text-xs text-slate-500">
                           <Calendar className="w-3 h-3" />
-                          {new Date(interview.scheduled_at).toLocaleDateString()}
+                          {new Date(interview.date).toLocaleDateString()}
                           <Clock className="w-3 h-3 ml-2" />
-                          {new Date(interview.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {interview.time}
                         </div>
                       </div>
                     ))}
@@ -419,12 +422,14 @@ function StatCard({ icon: Icon, label, value, trend, trendUp, color }: {
           )}>
             <Icon className="w-6 h-6" />
           </div>
-          <Badge className={cn(
-            "border-0",
-            trendUp ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-          )}>
-            {trend}
-          </Badge>
+          {trend && (
+            <Badge className={cn(
+              "border-0",
+              trendUp ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+            )}>
+              {trend}
+            </Badge>
+          )}
         </div>
         <div>
           <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>

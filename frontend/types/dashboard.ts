@@ -1,5 +1,6 @@
 export interface CandidateProfile {
   name: string;
+  full_name?: string;
   profileCompletion: number;
   avatar?: string;
 }
@@ -9,6 +10,11 @@ export interface DashboardStats {
   interviewsScheduled: number;
   profileViews: number;
   profileScore: number;
+  // Trend fields (percentage change from previous period)
+  applicationsTrend?: number;
+  profileViewsTrend?: number;
+  interviewsTrend?: number;
+  profileScoreTrend?: number;
 }
 
 export interface Application {
@@ -51,16 +57,16 @@ export interface ProfileStrength {
 export interface ActivityItem {
   id: string;
   type:
-    | 'view'
-    | 'status_change'
-    | 'message'
-    | 'recommendation'
-    | 'interview_scheduled'
-    | 'application_viewed'
-    | 'profile_viewed'
-    | 'job_recommended'
-    | 'application_submitted'
-    | 'application_shortlisted';
+  | 'view'
+  | 'status_change'
+  | 'message'
+  | 'recommendation'
+  | 'interview_scheduled'
+  | 'application_viewed'
+  | 'profile_viewed'
+  | 'job_recommended'
+  | 'application_submitted'
+  | 'application_shortlisted';
   message: string;
   timestamp: string;
   icon?: string;

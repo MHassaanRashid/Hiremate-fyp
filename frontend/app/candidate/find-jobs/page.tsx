@@ -193,15 +193,15 @@ export default function FindJobsPage() {
                 </div>
             </div>
 
+
             <ApplicationDialog
-                isOpen={isDialogOpen}
-                onClose={() => {
-                    setIsDialogOpen(false)
-                    setSelectedJob(null)
+                job={selectedJob || { id: '', company_name: '', job_title: '', location: '', job_type: '' }}
+                open={isDialogOpen}
+                onOpenChange={(open) => {
+                    setIsDialogOpen(open)
+                    if (!open) setSelectedJob(null)
                 }}
                 onConfirm={handleConfirmApply}
-                jobTitle={selectedJob?.job_title || ""}
-                companyName={selectedJob?.company_name || ""}
             />
         </CandidateLayout>
     )
@@ -288,7 +288,7 @@ function JobCard({ job, onApply }: { job: Job; onApply: (job: Job) => void }) {
 
                 <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                     <span className="text-xs text-slate-500">
-                        Posted {new Date(job.created_at).toLocaleDateString()}
+                        Posted {job.created_at ? new Date(job.created_at).toLocaleDateString() : 'Recently'}
                     </span>
                     {job.applicants_count !== undefined && (
                         <span className="text-xs text-slate-500 flex items-center gap-1">

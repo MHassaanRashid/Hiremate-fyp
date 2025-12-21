@@ -36,7 +36,7 @@ export default function CandidatePage() {
       try {
         setIsLoading(true)
         setError(null)
-        
+
         const accessToken = localStorage.getItem('access_token')
         if (!accessToken) {
           console.error('No access token found')
@@ -46,7 +46,7 @@ export default function CandidatePage() {
 
         // Fetch data from backend API
         const data = await getDashboardData(accessToken)
-        
+
         // Set dashboard data with defaults for empty arrays
         setDashboardData({
           profile: data.profile,
@@ -60,12 +60,13 @@ export default function CandidatePage() {
       } catch (error: any) {
         console.error('Error fetching dashboard:', error)
         setError(error.message || 'Failed to load dashboard')
-        
+
         // Set empty dashboard with default values (no mock data)
         setDashboardData({
-          profile: { 
-            name: 'Candidate', 
-            profileCompletion: 0 
+          profile: {
+            name: user?.full_name || user?.email || 'Candidate',
+            full_name: user?.full_name,
+            profileCompletion: 0
           },
           stats: {
             applicationsSubmitted: 0,
@@ -116,7 +117,7 @@ export default function CandidatePage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <p className="text-red-600 mb-4">{error}</p>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
             >

@@ -374,7 +374,7 @@ export default function CandidateProfilePage() {
           </div>
         </div>
       </div>
-    </CandidateLayout>
+    </CandidateLayout >
   )
 }
 

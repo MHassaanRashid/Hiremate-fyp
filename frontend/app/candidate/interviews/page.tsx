@@ -156,7 +156,7 @@ export default function CandidateInterviewsPage() {
                     )}
                 </div>
             </div>
-        </CandidateLayout>
+        </CandidateLayout >
     )
 }
 

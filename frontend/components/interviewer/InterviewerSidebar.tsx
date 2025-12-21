@@ -85,7 +85,7 @@ function AppSidebar() {
             <SidebarHeader className="border-b border-slate-200 p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/30 flex-shrink-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
                             <span className="text-white font-bold text-lg">HM</span>
                         </div>
                         {isExpanded && (
@@ -101,7 +101,7 @@ function AppSidebar() {
                 <button
                     onClick={toggleSidebar}
                     className={cn(
-                        "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-indigo-600 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-indigo-700",
+                        "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-blue-700",
                         !isExpanded && "rotate-180"
                     )}
                 >
@@ -123,7 +123,7 @@ function AppSidebar() {
                                             className={cn(
                                                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden",
                                                 active
-                                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
                                                     : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                                                 !isExpanded && "justify-center px-3"
                                             )}
@@ -183,9 +183,9 @@ function AppSidebar() {
                         onClick={() => handleNavigation("/interviewer/profile")}
                     >
                         <div className="relative flex-shrink-0">
-                            <Avatar className="h-10 w-10 border-2 border-indigo-100 group-hover:border-indigo-200 transition-all duration-200">
+                            <Avatar className="h-10 w-10 border-2 border-blue-100 group-hover:border-blue-200 transition-all duration-200">
                                 <AvatarImage src="/placeholder.svg" />
-                                <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-indigo-600 text-white font-semibold">
+                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
                                     {getInitials(user.full_name || user.email || "U")}
                                 </AvatarFallback>
                             </Avatar>
@@ -214,7 +214,7 @@ interface InterviewerSidebarLayoutProps {
 
 export default function InterviewerSidebarLayout({ children }: InterviewerSidebarLayoutProps) {
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-slate-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
             <SidebarProvider defaultOpen={true}>
                 <AppSidebar />
                 <SidebarInset className="flex flex-col min-h-screen">
