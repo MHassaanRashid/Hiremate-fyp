@@ -32,13 +32,19 @@ async def get_current_user(authorization: str = Header(None)) -> Any:
 @router.post("/save")
 async def save_resume(request: ResumeRequest, user=Depends(get_current_user)):
     """Save or update complete resume data"""
-    return ResumeService.save_resume(user, request)
+    result = ResumeService.save_resume(user, request)
+    # Update profile completion status
+    ResumeService.update_profile_completion(user.id)
+    return result
 
 
 @router.post("/save-section")
 async def save_resume_section(request: SectionSaveRequest, user=Depends(get_current_user)):
     """Save or update individual resume section"""
-    return ResumeService.save_resume_section(user, request)
+    result = ResumeService.save_resume_section(user, request)
+    # Update profile completion status
+    ResumeService.update_profile_completion(user.id)
+    return result
 
 
 @router.get("/sections/{section}")

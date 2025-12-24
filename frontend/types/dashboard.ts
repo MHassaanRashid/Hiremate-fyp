@@ -3,6 +3,11 @@ export interface CandidateProfile {
   full_name?: string;
   profileCompletion: number;
   avatar?: string;
+  // Test and interview fields
+  resume_completed?: boolean;
+  test_status?: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed';
+  interview_eligible?: boolean;
+  last_test_date?: string;
 }
 
 export interface DashboardStats {
@@ -70,4 +75,60 @@ export interface ActivityItem {
   message: string;
   timestamp: string;
   icon?: string;
+}
+
+// =====================================================
+// Test System Types
+// =====================================================
+
+export interface TestLanguage {
+  id: string;
+  name: string;
+  code: string;
+  display_name: string;
+  description: string;
+  duration_minutes: number;
+  question_count: number;
+  passing_score: number;
+}
+
+export interface TestSession {
+  id: string;
+  language: string;
+  status: 'in_progress' | 'completed' | 'abandoned';
+  duration_minutes: number;
+  total_questions: number;
+  started_at: string;
+}
+
+export interface TestQuestion {
+  id: string;
+  number: number;
+  type: 'mcq' | 'coding';
+  text: string;
+  options?: string[];
+  code_template?: string;
+}
+
+export interface TestReport {
+  id: string;
+  language: string;
+  score_percentage: number;
+  passed: boolean;
+  completed_at: string;
+  total_questions: number;
+  correct_answers: number;
+  question_results: Array<{
+    question_id: string;
+    correct: boolean;
+    time_spent: number;
+  }>;
+}
+
+export interface TestHistory {
+  id: string;
+  language: string;
+  score_percentage: number;
+  passed: boolean;
+  completed_at: string;
 }
