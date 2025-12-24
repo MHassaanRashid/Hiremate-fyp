@@ -316,6 +316,9 @@ export default function CandidateProfilePage() {
                     <Briefcase className="w-5 h-5" />
                     Work Experience
                   </CardTitle>
+                  {experience.length > 0 && (
+                    <Badge variant="secondary" className="text-[10px] font-medium">{experience.length} Positions</Badge>
+                  )}
                 </CardHeader>
                 <CardContent className="p-6">
                   {experience && experience.length > 0 ? (

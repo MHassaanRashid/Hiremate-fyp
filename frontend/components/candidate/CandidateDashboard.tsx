@@ -58,6 +58,73 @@ interface CandidateDashboardProps {
   isLoading?: boolean;
 }
 
+// Stat Card Component
+interface StatCardProps {
+  icon: React.ElementType;
+  label: string;
+  value: number | string;
+  trend?: string; // Optional trend indicator
+  color?: 'default' | 'success' | 'warning' | 'info';
+}
+
+function StatCard({ icon: Icon, label, value, trend, color = 'default' }: StatCardProps) {
+  const colorStyles = {
+    default: "bg-primary/10 text-primary ring-primary/20",
+    success: "bg-emerald-50 text-emerald-600 ring-emerald-600/20 dark:bg-emerald-950/30 dark:text-emerald-400",
+    warning: "bg-amber-50 text-amber-600 ring-amber-600/20 dark:bg-amber-950/30 dark:text-amber-400",
+    info: "bg-sky-50 text-sky-600 ring-sky-600/20 dark:bg-sky-950/30 dark:text-sky-400"
+  };
+
+  return (
+    <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-200 p-6 flex flex-col justify-between h-full group">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-medium text-muted-foreground mb-1">{label}</p>
+          <h3 className="text-3xl font-bold tracking-tight text-foreground">{value}</h3>
+        </div>
+        <div className={cn(
+          "p-2.5 rounded-lg ring-1 transition-colors",
+          colorStyles[color]
+        )}>
+          <Icon className="w-5 h-5" />
+        </div>
+      </div>
+      {trend && (
+        <div className="mt-4 flex items-center text-xs">
+          <span className="text-emerald-600 font-medium flex items-center">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            {trend}
+          </span>
+          <span className="text-muted-foreground ml-1.5">vs last month</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Profile Item Component
+interface ProfileItemProps {
+  label: string;
+  completed: boolean;
+  icon: React.ElementType;
+}
+
+function ProfileItem({ label, completed, icon: Icon }: ProfileItemProps) {
+  return (
+    <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-2">
+        <Icon className={cn("w-4 h-4", completed ? "text-primary" : "text-muted-foreground")} />
+        <span className={cn("text-sm", completed ? "text-foreground font-medium" : "text-muted-foreground")}>{label}</span>
+      </div>
+      {completed ? (
+        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+      ) : (
+        <AlertCircle className="w-5 h-5 text-amber-500" />
+      )}
+    </div>
+  );
+}
+
 export default function CandidateDashboard({
   profile,
   stats,
@@ -116,6 +183,7 @@ export default function CandidateDashboard({
             Find Jobs
           </Button>
         </div>
+      </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -390,11 +458,6 @@ export default function CandidateDashboard({
               </CardContent>
             </Card>
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // Helper Components
 function StatCard({ icon: Icon, label, value, trend, trendUp, color }: {

@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   Mail,
   Phone,
@@ -45,6 +46,7 @@ import {
   SlidersHorizontal,
   Database,
   ArrowDownToLine,
+  User,
 } from "lucide-react";
 
 function getAccessToken() {
@@ -183,10 +185,10 @@ export default function CandidateSettingsPage() {
   // Auth guard
   if (authLoading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
         <div className="text-center">
-          <div className="w-14 h-14 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">Loading your settings...</p>
+          <div className="w-14 h-14 border-t-4 border-primary border-solid rounded-full animate-spin mx-auto" />
+          <p className="mt-4 text-muted-foreground">Loading your settings...</p>
         </div>
       </div>
     );
@@ -194,22 +196,22 @@ export default function CandidateSettingsPage() {
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="min-h-screen bg-muted/30">
+        <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
           <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Account settings</h1>
-              <p className="mt-1 text-sm text-gray-600">
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground">Account settings</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
                 Manage your profile, security, privacy, and communication preferences.
               </p>
             </div>
-            <Badge className="self-start bg-blue-50 text-blue-700 border border-blue-200">
+            <Badge className="self-start bg-primary/10 text-primary border-primary/20 hover:bg-primary/20">
               Candidate portal
             </Badge>
           </header>
 
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700" role="alert">
+            <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-4 py-3 text-xs text-destructive" role="alert">
               {error}
             </div>
           )}
@@ -218,8 +220,8 @@ export default function CandidateSettingsPage() {
             <SettingsSidebar active={activeTab} onChange={setActiveTab} />
 
             {/* Mobile tabs */}
-            <div className="md:hidden">
-              <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="md:hidden w-full">
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {(
                   [
                     { key: "profile", label: "Profile" },
@@ -234,11 +236,12 @@ export default function CandidateSettingsPage() {
                     key={t.key}
                     type="button"
                     onClick={() => setActiveTab(t.key)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border ${
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap",
                       activeTab === t.key
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white/80 text-gray-700 border-blue-100"
-                    }`}
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-muted-foreground border-border hover:bg-muted"
+                    )}
                   >
                     {t.label}
                   </button>
@@ -246,11 +249,11 @@ export default function CandidateSettingsPage() {
               </div>
             </div>
 
-            <main className="flex-1 w-full">
+            <main className="flex-1 w-full relative">
               {!isLoaded || isLoading ? (
                 <SettingsSkeleton />
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
                   {activeTab === "profile" && profile && (
                     <ProfileSettingsTab
                       profile={profile}
@@ -312,15 +315,15 @@ function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
     <section className="space-y-4" aria-label="Profile settings">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Profile settings</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-foreground">Profile settings</h2>
+          <p className="text-xs text-muted-foreground">
             Update your personal information and how employers see you.
           </p>
         </div>
         <SaveIndicator state={saveState} />
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-4">
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-6">
         <FileUploadWithPreview
           initialUrl={profile.avatar_url || null}
           onFileSelected={async () => {
@@ -328,48 +331,53 @@ function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
           }}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Full name</label>
-            <Input
-              value={profile.full_name || ""}
-              onChange={(e) => onChange({ ...profile, full_name: e.target.value })}
-              placeholder="Your full name"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Email</label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Full name</label>
             <div className="relative">
-              <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <User className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                value={profile.full_name || ""}
+                onChange={(e) => onChange({ ...profile, full_name: e.target.value })}
+                placeholder="Your full name"
+                className="pl-9"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Email</label>
+            <div className="relative">
+              <Mail className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 type="email"
                 value={profile.email}
                 onChange={(e) => onChange({ ...profile, email: e.target.value })}
-                className="pl-7"
+                className="pl-9 bg-muted/50 cursor-not-allowed"
                 placeholder="you@example.com"
+                disabled
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Phone</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Phone</label>
             <div className="relative">
-              <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Phone className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 value={profile.phone || ""}
                 onChange={(e) => onChange({ ...profile, phone: e.target.value })}
-                className="pl-7"
+                className="pl-9"
                 placeholder="+1 234 567 890"
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Location</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Location</label>
             <div className="relative">
-              <MapPin className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <MapPin className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 value={profile.location || ""}
                 onChange={(e) => onChange({ ...profile, location: e.target.value })}
-                className="pl-7"
+                className="pl-9"
                 placeholder="City, Country or Remote"
               />
             </div>
@@ -377,13 +385,13 @@ function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <h3 className="text-xs font-semibold text-gray-900">Professional links</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Portfolio / website</label>
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-4">
+        <h3 className="text-xs font-semibold text-foreground border-b border-border pb-2">Professional links</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Portfolio / website</label>
             <div className="relative">
-              <Globe2 className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Globe2 className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 value={profile.links?.portfolio || ""}
                 onChange={(e) =>
@@ -392,15 +400,15 @@ function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
                     links: { ...profile.links, portfolio: e.target.value },
                   })
                 }
-                className="pl-7"
+                className="pl-9"
                 placeholder="https://your-portfolio.com"
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">LinkedIn</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">LinkedIn</label>
             <div className="relative">
-              <Linkedin className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Linkedin className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 value={profile.links?.linkedin || ""}
                 onChange={(e) =>
@@ -409,15 +417,15 @@ function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
                     links: { ...profile.links, linkedin: e.target.value },
                   })
                 }
-                className="pl-7"
+                className="pl-9"
                 placeholder="https://linkedin.com/in/username"
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">GitHub</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">GitHub</label>
             <div className="relative">
-              <Github className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Github className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <Input
                 value={profile.links?.github || ""}
                 onChange={(e) =>
@@ -426,7 +434,7 @@ function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
                     links: { ...profile.links, github: e.target.value },
                   })
                 }
-                className="pl-7"
+                className="pl-9"
                 placeholder="https://github.com/username"
               />
             </div>
@@ -483,27 +491,27 @@ function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: Secu
     <section className="space-y-4" aria-label="Account security settings">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Account security</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-foreground">Account security</h2>
+          <p className="text-xs text-muted-foreground">
             Keep your account secure with a strong password and login activity monitoring.
           </p>
         </div>
       </div>
 
       {/* Change password */}
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Lock className="w-4 h-4 text-blue-600" />
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-4">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Lock className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-gray-900">Change password</h3>
-            <p className="text-[11px] text-gray-500">Use at least 8 characters with numbers and symbols.</p>
+            <h3 className="text-xs font-semibold text-foreground">Change password</h3>
+            <p className="text-[11px] text-muted-foreground">Use at least 8 characters with numbers and symbols.</p>
           </div>
         </div>
-        <form onSubmit={handlePasswordSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Current password</label>
+        <form onSubmit={handlePasswordSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Current password</label>
             <Input
               type="password"
               value={passwordState.current}
@@ -513,8 +521,8 @@ function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: Secu
               required
             />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">New password</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">New password</label>
             <Input
               type="password"
               value={passwordState.next}
@@ -525,8 +533,8 @@ function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: Secu
             />
             <PasswordStrengthMeter password={passwordState.next} />
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Confirm new password</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Confirm new password</label>
             <Input
               type="password"
               value={passwordState.confirm}
@@ -536,8 +544,8 @@ function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: Secu
               required
             />
           </div>
-          <div className="md:col-span-3 flex items-center justify-between pt-1">
-            <div className="text-xs text-red-600 min-h-[1rem]">
+          <div className="md:col-span-3 flex items-center justify-between pt-2">
+            <div className="text-xs text-destructive min-h-[1rem]">
               {passwordState.error && <span>{passwordState.error}</span>}
               {passwordState.success && (
                 <span className="text-emerald-600">{passwordState.success}</span>
@@ -546,7 +554,8 @@ function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: Secu
             <Button
               type="submit"
               disabled={passwordState.saving}
-              className="bg-blue-600 hover:bg-blue-700 text-xs px-4 py-1.5"
+              className="text-xs px-4 h-8"
+              size="sm"
             >
               {passwordState.saving ? "Updating..." : "Update password"}
             </Button>
@@ -556,34 +565,35 @@ function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: Secu
 
       {/* Two-factor placeholder + sessions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
+        <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-xs font-semibold text-gray-900">Two-factor authentication</h3>
-              <p className="text-[11px] text-gray-500">
-                Add an extra layer of security. Coming soon in this prototype.
+              <h3 className="text-xs font-semibold text-foreground">Two-factor authentication</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Add an extra layer of security. Coming soon.
               </p>
             </div>
           </div>
           <Button
             type="button"
             disabled
-            className="bg-gray-100 text-gray-400 h-8 text-xs mt-1 cursor-not-allowed"
+            variant="outline"
+            className="w-full text-xs h-8 cursor-not-allowed bg-muted/50"
           >
             Set up two-factor authentication
           </Button>
         </div>
-        <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
+        <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h3 className="text-xs font-semibold text-gray-900">Login activity</h3>
-              <p className="text-[11px] text-gray-500">Recent sessions and sign-ins.</p>
+              <h3 className="text-xs font-semibold text-foreground">Login activity</h3>
+              <p className="text-[11px] text-muted-foreground">Recent sessions and sign-ins.</p>
             </div>
           </div>
           <SecuritySessionsList sessions={sessions} />
@@ -604,21 +614,21 @@ function PrivacySettingsTab({ privacy, onChange, saveState }: PrivacyTabProps) {
     <section className="space-y-4" aria-label="Privacy and visibility settings">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Privacy & visibility</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-foreground">Privacy & visibility</h2>
+          <p className="text-xs text-muted-foreground">
             Control who can see your profile and how your data is shared.
           </p>
         </div>
         <SaveIndicator state={saveState} />
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-4">
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-6">
         <div>
-          <p className="text-xs font-semibold text-gray-900">Profile visibility</p>
-          <p className="text-[11px] text-gray-500 mb-2">
+          <p className="text-xs font-semibold text-foreground">Profile visibility</p>
+          <p className="text-[11px] text-muted-foreground mb-3">
             Choose how visible your profile is to employers and recruiters.
           </p>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-col sm:flex-row gap-3">
             {[
               { key: "public", label: "Public", description: "Visible to everyone." },
               {
@@ -636,20 +646,21 @@ function PrivacySettingsTab({ privacy, onChange, saveState }: PrivacyTabProps) {
                 key={opt.key}
                 type="button"
                 onClick={() => onChange({ ...privacy, profile_visibility: opt.key as any })}
-                className={`flex-1 rounded-xl border px-3 py-2 text-left text-xs ${
+                className={cn(
+                  "flex-1 rounded-xl border px-4 py-3 text-left text-xs transition-colors",
                   privacy.profile_visibility === opt.key
-                    ? "border-blue-500 bg-blue-50 text-blue-800"
-                    : "border-gray-200 bg-white text-gray-700"
-                }`}
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted/50"
+                )}
               >
-                <p className="font-medium">{opt.label}</p>
-                <p className="text-[11px] text-gray-500">{opt.description}</p>
+                <p className={cn("font-medium", privacy.profile_visibility === opt.key && "text-foreground")}>{opt.label}</p>
+                <p className="text-[11px] opacity-80 mt-0.5">{opt.description}</p>
               </button>
             ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           <ToggleSwitch
             checked={privacy.share_profile_with_employers}
             onCheckedChange={(v) =>
@@ -707,25 +718,25 @@ function NotificationSettingsTab({ settings, onChange, saveState }: Notification
     <section className="space-y-4" aria-label="Notification preferences">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Notification preferences</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-foreground">Notification preferences</h2>
+          <p className="text-xs text-muted-foreground">
             Choose how and when HireMate keeps you updated.
           </p>
         </div>
         <SaveIndicator state={saveState} />
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Bell className="w-4 h-4 text-blue-600" />
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-5">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Bell className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-gray-900">Email notifications</h3>
-            <p className="text-[11px] text-gray-500">Fine-tune which emails you receive.</p>
+            <h3 className="text-xs font-semibold text-foreground">Email notifications</h3>
+            <p className="text-[11px] text-muted-foreground">Fine-tune which emails you receive.</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
           <ToggleSwitch
             checked={settings.job_recommendations_email}
             onCheckedChange={(v) =>
@@ -769,14 +780,14 @@ function NotificationSettingsTab({ settings, onChange, saveState }: Notification
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Bell className="w-4 h-4 text-blue-600" />
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Bell className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-gray-900">Push notifications</h3>
-            <p className="text-[11px] text-gray-500">
+            <h3 className="text-xs font-semibold text-foreground">Push notifications</h3>
+            <p className="text-[11px] text-muted-foreground">
               Enable browser or mobile push notifications.
             </p>
           </div>
@@ -788,8 +799,8 @@ function NotificationSettingsTab({ settings, onChange, saveState }: Notification
           description="Get quick alerts for time-sensitive updates."
         />
 
-        <div className="pt-2 space-y-1">
-          <p className="text-xs font-semibold text-gray-900">Notification frequency</p>
+        <div className="pt-2 space-y-2">
+          <p className="text-xs font-semibold text-foreground">Notification frequency</p>
           <div className="flex flex-wrap gap-2 text-xs">
             {[
               { key: "immediate", label: "Immediate" },
@@ -800,11 +811,12 @@ function NotificationSettingsTab({ settings, onChange, saveState }: Notification
                 key={opt.key}
                 type="button"
                 onClick={() => onChange({ ...settings, frequency: opt.key as any })}
-                className={`rounded-full border px-3 py-1 ${
+                className={cn(
+                  "rounded-full border px-3 py-1 transition-colors",
                   settings.frequency === opt.key
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-blue-100"
-                }`}
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background text-foreground border-border hover:bg-muted"
+                )}
               >
                 {opt.label}
               </button>
@@ -835,27 +847,27 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
     <section className="space-y-4" aria-label="Application preferences">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Application preferences</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-foreground">Application preferences</h2>
+          <p className="text-xs text-muted-foreground">
             Configure how you apply and what types of roles you&apos;re interested in.
           </p>
         </div>
         <SaveIndicator state={saveState} />
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <SlidersHorizontal className="w-4 h-4 text-blue-600" />
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-6">
+        <div className="flex items-center gap-3 border-b border-border pb-4">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <SlidersHorizontal className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-gray-900">Job preferences</h3>
-            <p className="text-[11px] text-gray-500">We use this to personalize recommendations.</p>
+            <h3 className="text-xs font-semibold text-foreground">Job preferences</h3>
+            <p className="text-[11px] text-muted-foreground">We use this to personalize recommendations.</p>
           </div>
         </div>
-        <div className="space-y-3">
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-700">Preferred job types</p>
+        <div className="space-y-5">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-foreground">Preferred job types</p>
             <div className="flex flex-wrap gap-2 text-xs">
               {[
                 { key: "full_time", label: "Full-time" },
@@ -869,11 +881,12 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
                     key={opt.key}
                     type="button"
                     onClick={() => toggleJobType(opt.key)}
-                    className={`rounded-full border px-3 py-1 ${
+                    className={cn(
+                      "rounded-full border px-3 py-1 transition-colors",
                       active
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-blue-100"
-                    }`}
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background text-foreground border-border hover:bg-muted"
+                    )}
                   >
                     {opt.label}
                   </button>
@@ -882,9 +895,9 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Minimum salary (annual)</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Minimum salary (annual)</label>
               <Input
                 type="number"
                 value={prefs.salary_min ?? ""}
@@ -894,8 +907,8 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
                 placeholder="e.g. 60000"
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-gray-700">Maximum salary (annual)</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-foreground">Maximum salary (annual)</label>
               <Input
                 type="number"
                 value={prefs.salary_max ?? ""}
@@ -907,8 +920,8 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Preferred locations</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Preferred locations</label>
             <Textarea
               rows={2}
               value={prefs.preferred_locations.join(", ")}
@@ -925,8 +938,8 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Preferred industries</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Preferred industries</label>
             <Textarea
               rows={2}
               value={prefs.preferred_industries.join(", ")}
@@ -943,8 +956,8 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Preferred roles</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-foreground">Preferred roles</label>
             <Textarea
               rows={2}
               value={prefs.preferred_roles.join(", ")}
@@ -1017,21 +1030,21 @@ function DataExportTab() {
     <section className="space-y-4" aria-label="Data and export settings">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Data & export</h2>
-          <p className="text-xs text-gray-500">
+          <h2 className="text-sm font-semibold text-foreground">Data & export</h2>
+          <p className="text-xs text-muted-foreground">
             Download your data or request deletion in line with privacy regulations.
           </p>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Database className="w-4 h-4 text-blue-600" />
+      <div className="rounded-xl bg-card border border-border shadow-sm p-5 space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Database className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="text-xs font-semibold text-gray-900">Download your data</h3>
-            <p className="text-[11px] text-gray-500">
+            <h3 className="text-xs font-semibold text-foreground">Download your data</h3>
+            <p className="text-[11px] text-muted-foreground">
               Export a copy of your profile, resume, applications, interviews, and settings.
             </p>
           </div>
@@ -1040,21 +1053,21 @@ function DataExportTab() {
           type="button"
           onClick={handleExport}
           disabled={isExporting}
-          className="bg-blue-600 hover:bg-blue-700 text-xs h-8 px-4 inline-flex items-center gap-1"
+          className="text-xs h-8 px-4 inline-flex items-center gap-1.5"
         >
-          <ArrowDownToLine className="w-3 h-3" />
+          <ArrowDownToLine className="w-3.5 h-3.5" />
           {isExporting ? "Preparing export..." : "Download JSON"}
         </Button>
         {exportError && (
-          <p className="text-[11px] text-red-600 mt-1">{exportError}</p>
+          <p className="text-[11px] text-destructive mt-1">{exportError}</p>
         )}
       </div>
 
       {/* Danger zone */}
-      <div className="rounded-2xl bg-red-50 border border-red-200 shadow-sm p-4 space-y-3">
+      <div className="rounded-xl bg-destructive/5 border border-destructive/20 shadow-sm p-5 space-y-4">
         <div>
-          <h3 className="text-xs font-semibold text-red-800">Danger zone</h3>
-          <p className="text-[11px] text-red-700">
+          <h3 className="text-xs font-semibold text-destructive">Danger zone</h3>
+          <p className="text-[11px] text-muted-foreground">
             Request deletion of your HireMate account and associated data. This action is
             not reversible once processed.
           </p>
