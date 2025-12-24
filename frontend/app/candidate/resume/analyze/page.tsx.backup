@@ -1,0 +1,609 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import CandidateLayout from "@/layouts/CandidateLayout";
+import {
+    analyzeResume,
+    getLatestAnalysis,
+    getAnalysisHistory,
+    type ResumeAnalysis,
+    type AnalysisHistory,
+    type Suggestion,
+    type SectionScore,
+} from "@/lib/api/resume-analyzer";
+import {
+    CheckCircle2,
+    XCircle,
+    AlertCircle,
+    TrendingUp,
+    TrendingDown,
+    Minus,
+    Sparkles,
+    FileText,
+    Target,
+    Zap,
+    Clock,
+    Download,
+    RefreshCw,
+    ChevronRight,
+    Info
+} from "lucide-react";
+
+export default function ResumeAnalyzerPage() {
+    const router = useRouter();
+    const supabase = createClientComponentClient();
+
+    const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null);
+    const [history, setHistory] = useState<AnalysisHistory | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [analyzing, setAnalyzing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadLatestAnalysis();
+        loadHistory();
+    }, []);
+
+    const loadLatestAnalysis = async () => {
+        try {
+            setLoading(true);
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                router.push("/auth/candidate");
+                return;
+            }
+
+            const data = await getLatestAnalysis(session.access_token);
+            setAnalysis(data);
+        } catch (err: any) {
+            console.error("Error loading analysis:", err);
+            // If no analysis exists, that's okay
+            if (!err.message?.includes("404")) {
+                setError(err.message || "Failed to load analysis");
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadHistory = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) return;
+
+            const data = await getAnalysisHistory(session.access_token, 10);
+            setHistory(data);
+        } catch (err: any) {
+            console.error("Error loading history:", err);
+        }
+    };
+
+    const handleAnalyze = async () => {
+        try {
+            setAnalyzing(true);
+            setError(null);
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                router.push("/auth/candidate");
+                return;
+            }
+
+            const data = await analyzeResume(session.access_token, {
+                include_ai_analysis: true,
+            });
+
+            setAnalysis(data);
+            await loadHistory();
+        } catch (err: any) {
+            console.error("Analysis error:", err);
+            setError(err.message || "Failed to analyze resume");
+        } finally {
+            setAnalyzing(false);
+        }
+    };
+
+    const getScoreColor = (score: number) => {
+        if (score >= 85) return "text-green-600";
+        if (score >= 70) return "text-blue-600";
+        if (score >= 50) return "text-yellow-600";
+        return "text-red-600";
+    };
+
+    const getScoreBgColor = (score: number) => {
+        if (score >= 85) return "bg-green-100";
+        if (score >= 70) return "bg-blue-100";
+        if (score >= 50) return "bg-yellow-100";
+        return "bg-red-100";
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'excellent':
+                return <CheckCircle2 className="w-5 h-5 text-green-600" />;
+            case 'good':
+                return <CheckCircle2 className="w-5 h-5 text-blue-600" />;
+            case 'needs_improvement':
+                return <AlertCircle className="w-5 h-5 text-yellow-600" />;
+            case 'poor':
+                return <XCircle className="w-5 h-5 text-red-600" />;
+            default:
+                return <Minus className="w-5 h-5 text-gray-400" />;
+        }
+    };
+
+    const getPriorityColor = (priority: string) => {
+        switch (priority) {
+            case 'high':
+                return 'border-red-300 bg-red-50';
+            case 'medium':
+                return 'border-yellow-300 bg-yellow-50';
+            case 'low':
+                return 'border-blue-300 bg-blue-50';
+            default:
+                return 'border-gray-300 bg-gray-50';
+        }
+    };
+
+    const getPriorityBadge = (priority: string) => {
+        switch (priority) {
+            case 'high':
+                return 'bg-red-100 text-red-700';
+            case 'medium':
+                return 'bg-yellow-100 text-yellow-700';
+            case 'low':
+                return 'bg-blue-100 text-blue-700';
+            default:
+                return 'bg-gray-100 text-gray-700';
+        }
+    };
+
+    const getTrendIcon = (trend?: string) => {
+        switch (trend) {
+            case 'improving':
+                return <TrendingUp className="w-5 h-5 text-green-600" />;
+            case 'declining':
+                return <TrendingDown className="w-5 h-5 text-red-600" />;
+            default:
+                return <Minus className="w-5 h-5 text-gray-400" />;
+        }
+    };
+
+    if (loading) {
+        return (
+            <CandidateLayout>
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
+                    <div className="text-center">
+                        <RefreshCw className="w-12 h-12 text-blue-600 animate-spin mx-auto mb-4" />
+                        <p className="text-gray-600">Loading analysis...</p>
+                    </div>
+                </div>
+            </CandidateLayout>
+        );
+    }
+
+    return (
+        <CandidateLayout>
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-6">
+                <div className="max-w-7xl mx-auto">
+                    {/* Header */}
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                                    <Sparkles className="w-10 h-10 text-blue-600" />
+                                    Resume Analyzer
+                                </h1>
+                                <p className="text-gray-600">
+                                    AI-powered analysis to help you create the perfect resume
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={analyzing}
+                                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            >
+                                {analyzing ? (
+                                    <>
+                                        <RefreshCw className="w-5 h-5 animate-spin" />
+                                        Analyzing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Zap className="w-5 h-5" />
+                                        Analyze Resume
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+                            <XCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-red-900">Error</p>
+                                <p className="text-red-700">{error}</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {!analysis && !error && (
+                        <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+                            <FileText className="w-20 h-20 text-gray-300 mx-auto mb-4" />
+                            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                No Analysis Yet
+                            </h2>
+                            <p className="text-gray-600 mb-6">
+                                Click "Analyze Resume" to get started with AI-powered insights
+                            </p>
+                            <button
+                                onClick={handleAnalyze}
+                                disabled={analyzing}
+                                className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                            >
+                                Analyze Now
+                            </button>
+                        </div>
+                    )}
+
+                    {analysis && (
+                        <div className="space-y-6">
+                            {/* Overall Score Card */}
+                            <div className="bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-xl p-8 text-white">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-blue-100 mb-2">Overall Resume Score</p>
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-6xl font-bold">
+                                                {analysis.overall_score}
+                                            </span>
+                                            <span className="text-3xl text-blue-100">/100</span>
+                                        </div>
+                                        <p className="mt-4 text-blue-100">
+                                            {analysis.overall_score >= 85 && "Excellent! Your resume is outstanding."}
+                                            {analysis.overall_score >= 70 && analysis.overall_score < 85 && "Good! A few improvements will make it great."}
+                                            {analysis.overall_score >= 50 && analysis.overall_score < 70 && "Fair. Some work needed to stand out."}
+                                            {analysis.overall_score < 50 && "Needs improvement. Let's work on it together."}
+                                        </p>
+                                    </div>
+                                    <div className="relative w-40 h-40">
+                                        <svg className="transform -rotate-90 w-40 h-40">
+                                            <circle
+                                                cx="80"
+                                                cy="80"
+                                                r="70"
+                                                stroke="rgba(255,255,255,0.2)"
+                                                strokeWidth="12"
+                                                fill="none"
+                                            />
+                                            <circle
+                                                cx="80"
+                                                cy="80"
+                                                r="70"
+                                                stroke="white"
+                                                strokeWidth="12"
+                                                fill="none"
+                                                strokeDasharray={`${2 * Math.PI * 70}`}
+                                                strokeDashoffset={`${2 * Math.PI * 70 * (1 - analysis.overall_score / 100)}`}
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Target className="w-12 h-12 text-white opacity-50" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Score Breakdown */}
+                            <div className="bg-white rounded-2xl shadow-lg p-6">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                    <Target className="w-6 h-6 text-blue-600" />
+                                    Score Breakdown
+                                </h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {analysis.completeness_score !== undefined && (
+                                        <ScoreCard
+                                            title="Completeness"
+                                            score={analysis.completeness_score}
+                                            icon={<FileText className="w-5 h-5" />}
+                                        />
+                                    )}
+                                    {analysis.ats_score !== undefined && (
+                                        <ScoreCard
+                                            title="ATS Compatible"
+                                            score={analysis.ats_score}
+                                            icon={<CheckCircle2 className="w-5 h-5" />}
+                                        />
+                                    )}
+                                    {analysis.formatting_score !== undefined && (
+                                        <ScoreCard
+                                            title="Formatting"
+                                            score={analysis.formatting_score}
+                                            icon={<Sparkles className="w-5 h-5" />}
+                                        />
+                                    )}
+                                    {analysis.content_quality_score !== undefined && (
+                                        <ScoreCard
+                                            title="Content Quality"
+                                            score={analysis.content_quality_score}
+                                            icon={<Zap className="w-5 h-5" />}
+                                        />
+                                    )}
+                                    {analysis.keyword_score !== undefined && (
+                                        <ScoreCard
+                                            title="Keywords"
+                                            score={analysis.keyword_score}
+                                            icon={<Target className="w-5 h-5" />}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Section Scores */}
+                            {analysis.section_scores && analysis.section_scores.length > 0 && (
+                                <div className="bg-white rounded-2xl shadow-lg p-6">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                                        Section Analysis
+                                    </h2>
+                                    <div className="space-y-4">
+                                        {analysis.section_scores.map((section, idx) => (
+                                            <div key={idx} className="border border-gray-200 rounded-lg p-4">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-3">
+                                                        {getStatusIcon(section.status)}
+                                                        <span className="font-semibold text-gray-900">
+                                                            {section.section_name}
+                                                        </span>
+                                                    </div>
+                                                    <span className={`font-bold ${getScoreColor(section.score)}`}>
+                                                        {section.score}/100
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                                                    <div
+                                                        className={`h-2 rounded-full ${section.score >= 85 ? 'bg-green-600' :
+                                                            section.score >= 70 ? 'bg-blue-600' :
+                                                                section.score >= 50 ? 'bg-yellow-600' : 'bg-red-600'
+                                                            }`}
+                                                        style={{ width: `${section.score}%` }}
+                                                    />
+                                                </div>
+                                                {section.feedback && (
+                                                    <p className="text-sm text-gray-600">{section.feedback}</p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Strengths & Weaknesses */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {/* Strengths */}
+                                {analysis.strengths && analysis.strengths.length > 0 && (
+                                    <div className="bg-green-50 border border-green-200 rounded-2xl p-6">
+                                        <h3 className="text-xl font-bold text-green-900 mb-4 flex items-center gap-2">
+                                            <CheckCircle2 className="w-6 h-6" />
+                                            Strengths
+                                        </h3>
+                                        <ul className="space-y-2">
+                                            {analysis.strengths.map((strength, idx) => (
+                                                <li key={idx} className="flex items-start gap-2 text-green-800">
+                                                    <ChevronRight className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                    <span>{strength}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+
+                                {/* Weaknesses */}
+                                {analysis.weaknesses && analysis.weaknesses.length > 0 && (
+                                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6">
+                                        <h3 className="text-xl font-bold text-red-900 mb-4 flex items-center gap-2">
+                                            <AlertCircle className="w-6 h-6" />
+                                            Areas for Improvement
+                                        </h3>
+                                        <ul className="space-y-2">
+                                            {analysis.weaknesses.map((weakness, idx) => (
+                                                <li key={idx} className="flex items-start gap-2 text-red-800">
+                                                    <ChevronRight className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                    <span>{weakness}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Suggestions */}
+                            {analysis.suggestions && analysis.suggestions.length > 0 && (
+                                <div className="bg-white rounded-2xl shadow-lg p-6">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                        <Sparkles className="w-6 h-6 text-blue-600" />
+                                        Actionable Suggestions
+                                    </h2>
+                                    <div className="space-y-4">
+                                        {analysis.suggestions.map((suggestion, idx) => (
+                                            <div
+                                                key={suggestion.id || idx}
+                                                className={`border-l-4 rounded-lg p-4 ${getPriorityColor(suggestion.priority)}`}
+                                            >
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-1 rounded text-xs font-semibold ${getPriorityBadge(suggestion.priority)}`}>
+                                                            {suggestion.priority.toUpperCase()}
+                                                        </span>
+                                                        <span className="text-sm font-medium text-gray-600">
+                                                            {suggestion.category}
+                                                        </span>
+                                                    </div>
+                                                    {suggestion.impact && (
+                                                        <span className="text-sm font-semibold text-blue-600">
+                                                            {suggestion.impact}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-gray-900 font-medium mb-2">
+                                                    {suggestion.message}
+                                                </p>
+                                                {suggestion.section && (
+                                                    <p className="text-sm text-gray-600">
+                                                        Section: {suggestion.section}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ATS Compatibility */}
+                            {analysis.ats_compatibility && (
+                                <div className="bg-white rounded-2xl shadow-lg p-6">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                        <CheckCircle2 className="w-6 h-6 text-blue-600" />
+                                        ATS Compatibility
+                                    </h2>
+                                    <div className="mb-6">
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`px-4 py-2 rounded-lg font-semibold ${analysis.ats_compatibility.passed
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-red-100 text-red-700'
+                                                }`}>
+                                                {analysis.ats_compatibility.passed ? 'ATS Friendly ✓' : 'Needs ATS Improvements'}
+                                            </div>
+                                            <span className="text-2xl font-bold text-gray-900">
+                                                {analysis.ats_compatibility.score}/100
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {analysis.ats_compatibility.issues.length > 0 && (
+                                        <div className="mb-6">
+                                            <h3 className="font-semibold text-gray-900 mb-3">Issues Found:</h3>
+                                            <ul className="space-y-2">
+                                                {analysis.ats_compatibility.issues.map((issue, idx) => (
+                                                    <li key={idx} className="flex items-start gap-2 text-red-700">
+                                                        <XCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                        <span>{issue}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
+                                    {analysis.ats_compatibility.recommendations.length > 0 && (
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900 mb-3">Recommendations:</h3>
+                                            <ul className="space-y-2">
+                                                {analysis.ats_compatibility.recommendations.map((rec, idx) => (
+                                                    <li key={idx} className="flex items-start gap-2 text-blue-700">
+                                                        <Info className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                        <span>{rec}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Analysis History */}
+                            {history && history.analyses.length > 1 && (
+                                <div className="bg-white rounded-2xl shadow-lg p-6">
+                                    <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                        <Clock className="w-6 h-6 text-blue-600" />
+                                        Analysis History
+                                    </h2>
+                                    {history.improvement_trend && (
+                                        <div className="mb-6 p-4 bg-blue-50 rounded-lg flex items-center gap-3">
+                                            {getTrendIcon(history.improvement_trend)}
+                                            <div>
+                                                <p className="font-semibold text-gray-900">
+                                                    Your resume is {history.improvement_trend}
+                                                </p>
+                                                {history.average_score && (
+                                                    <p className="text-sm text-gray-600">
+                                                        Average score: {history.average_score.toFixed(1)}/100
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="space-y-3">
+                                        {history.analyses.map((item) => (
+                                            <div
+                                                key={item.id}
+                                                className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                                            >
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${getScoreBgColor(item.overall_score)} ${getScoreColor(item.overall_score)}`}>
+                                                        {item.overall_score}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">
+                                                            {new Date(item.analyzed_at).toLocaleDateString('en-US', {
+                                                                month: 'long',
+                                                                day: 'numeric',
+                                                                year: 'numeric',
+                                                            })}
+                                                        </p>
+                                                        <p className="text-sm text-gray-600">
+                                                            {new Date(item.analyzed_at).toLocaleTimeString('en-US', {
+                                                                hour: '2-digit',
+                                                                minute: '2-digit',
+                                                            })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {item.job_id && (
+                                                    <span className="text-sm text-blue-600 font-medium">
+                                                        Job-specific
+                                                    </span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+            );
+}
+
+            // Helper Component: Score Card
+            function ScoreCard({title, score, icon}: {title: string; score: number; icon: React.ReactNode }) {
+    const getColor = (score: number) => {
+        if (score >= 85) return {bg: 'bg-green-100', text: 'text-green-700', ring: 'ring-green-600' };
+        if (score >= 70) return {bg: 'bg-blue-100', text: 'text-blue-700', ring: 'ring-blue-600' };
+        if (score >= 50) return {bg: 'bg-yellow-100', text: 'text-yellow-700', ring: 'ring-yellow-600' };
+            return {bg: 'bg-red-100', text: 'text-red-700', ring: 'ring-red-600' };
+    };
+
+            const colors = getColor(score);
+
+            return (
+            <div className={`${colors.bg} rounded-xl p-4 border border-gray-200`}>
+                <div className="flex items-center justify-between mb-3">
+                    <div className={`${colors.text} flex items-center gap-2`}>
+                        {icon}
+                        <span className="font-semibold">{title}</span>
+                    </div>
+                    <span className={`text-2xl font-bold ${colors.text}`}>{score}</span>
+                </div>
+                <div className="w-full bg-white rounded-full h-2">
+                    <div
+                        className={`h-2 rounded-full ${colors.ring.replace('ring', 'bg')}`}
+                        style={{ width: `${score}%` }}
+                    />
+                </div>
+            </div>
+            );
+}

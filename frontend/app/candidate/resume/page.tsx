@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import {
   CheckCircle, Award, User, GraduationCap, Briefcase, Code,
   ArrowRight, ArrowLeft, FileText, Save, Target, Lightbulb,
-  Loader2,
+  Loader2, Sparkles, Eye, Home, BarChart3, Zap, TrendingUp,
+  Clock, Download, Share2, Settings,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +14,7 @@ import { Progress } from "@/components/ui/progress"
 import { saveResume, getUserResume, saveResumeSection } from "@/lib/api/resume"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import toast from "react-hot-toast"
 import CandidateLayout from "@/layouts/CandidateLayout"
 
@@ -30,14 +32,78 @@ import {
 import { cn } from "@/lib/utils"
 
 const STEPS = [
-  { id: 1, title: 'Personal Info', icon: User },
-  { id: 2, title: 'Summary', icon: Target },
-  { id: 3, title: 'Experience', icon: Briefcase },
-  { id: 4, title: 'Education', icon: GraduationCap },
-  { id: 5, title: 'Skills', icon: Code },
-  { id: 6, title: 'Projects', icon: Lightbulb },
-  { id: 7, title: 'Certificates', icon: Award },
-  { id: 8, title: 'Preview', icon: FileText }
+  {
+    id: 1,
+    title: 'Personal Info',
+    icon: User,
+    description: 'Your contact details',
+    color: 'from-blue-500 to-cyan-500',
+    bgColor: 'bg-blue-50',
+    textColor: 'text-blue-700'
+  },
+  {
+    id: 2,
+    title: 'Summary',
+    icon: Target,
+    description: 'Professional overview',
+    color: 'from-purple-500 to-pink-500',
+    bgColor: 'bg-purple-50',
+    textColor: 'text-purple-700'
+  },
+  {
+    id: 3,
+    title: 'Experience',
+    icon: Briefcase,
+    description: 'Work history',
+    color: 'from-emerald-500 to-teal-500',
+    bgColor: 'bg-emerald-50',
+    textColor: 'text-emerald-700'
+  },
+  {
+    id: 4,
+    title: 'Education',
+    icon: GraduationCap,
+    description: 'Academic background',
+    color: 'from-amber-500 to-orange-500',
+    bgColor: 'bg-amber-50',
+    textColor: 'text-amber-700'
+  },
+  {
+    id: 5,
+    title: 'Skills',
+    icon: Code,
+    description: 'Your expertise',
+    color: 'from-rose-500 to-red-500',
+    bgColor: 'bg-rose-50',
+    textColor: 'text-rose-700'
+  },
+  {
+    id: 6,
+    title: 'Projects',
+    icon: Lightbulb,
+    description: 'Notable work',
+    color: 'from-indigo-500 to-blue-500',
+    bgColor: 'bg-indigo-50',
+    textColor: 'text-indigo-700'
+  },
+  {
+    id: 7,
+    title: 'Certificates',
+    icon: Award,
+    description: 'Achievements',
+    color: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700'
+  },
+  {
+    id: 8,
+    title: 'Preview',
+    icon: Eye,
+    description: 'Final review',
+    color: 'from-slate-700 to-slate-900',
+    bgColor: 'bg-slate-50',
+    textColor: 'text-slate-700'
+  }
 ]
 
 export default function ResumeBuilderPage() {
@@ -49,6 +115,7 @@ export default function ResumeBuilderPage() {
   const [autoSaving, setAutoSaving] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
   const [sectionCompletions, setSectionCompletions] = useState<{ [key: string]: boolean }>({})
+  const [lastSaved, setLastSaved] = useState<Date | null>(null)
 
   const [resumeData, setResumeData] = useState<ResumeData>({
     personalInfo: {
@@ -183,6 +250,7 @@ export default function ResumeBuilderPage() {
         await saveSection(currentSectionKey, resumeData[currentSectionKey as keyof ResumeData])
       }
       setCurrentStep(currentStep + 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } else if (!validateCurrentStep()) {
       toast.error('Please fill in all required fields')
     }
@@ -204,6 +272,7 @@ export default function ResumeBuilderPage() {
   const prevStep = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   }
 
@@ -216,7 +285,8 @@ export default function ResumeBuilderPage() {
         return
       }
       await saveResume(token, resumeData)
-      toast.success('Resume saved successfully!')
+      setLastSaved(new Date())
+      toast.success('✓ Resume saved successfully!')
     } catch (error: any) {
       toast.error(error.message || 'Failed to save resume.')
     } finally {
@@ -233,7 +303,7 @@ export default function ResumeBuilderPage() {
         return
       }
       await saveResume(token, resumeData)
-      toast.success('Resume saved successfully!')
+      toast.success('✓ Resume saved successfully!')
       setTimeout(() => { router.push('/candidate') }, 1500)
     } catch (error: any) {
       toast.error(error.message || 'Failed to save resume.')
@@ -250,6 +320,7 @@ export default function ResumeBuilderPage() {
       await saveResumeSection(token, section, data)
       const isCompleted = checkSectionCompletion(section, data)
       setSectionCompletions(prev => ({ ...prev, [section]: isCompleted }))
+      setLastSaved(new Date())
     } catch (error: any) {
       console.error(`Error saving ${section}:`, error)
     } finally {
@@ -258,7 +329,12 @@ export default function ResumeBuilderPage() {
   }
 
   const updateResumeData = useCallback((section: keyof ResumeData, data: any) => {
-    setResumeData(prev => ({ ...prev, [section]: data }))
+    console.log('updateResumeData called:', { section, data, currentData: resumeData[section] })
+    setResumeData(prev => {
+      const updated = { ...prev, [section]: data }
+      console.log('Updated resume data:', updated)
+      return updated
+    })
     if (autoSaveTimeoutRef.current) clearTimeout(autoSaveTimeoutRef.current)
     autoSaveTimeoutRef.current = setTimeout(async () => {
       const token = localStorage.getItem("access_token")
@@ -268,13 +344,14 @@ export default function ResumeBuilderPage() {
         await saveResumeSection(token, section as string, data)
         const isCompleted = checkSectionCompletion(section as string, data)
         setSectionCompletions(prev => ({ ...prev, [section]: isCompleted }))
+        setLastSaved(new Date())
       } catch (error: any) {
         console.error(`Error auto-saving ${section}:`, error)
       } finally {
         setAutoSaving(false)
       }
     }, 1500)
-  }, [])
+  }, [resumeData])
 
   const validateCurrentStep = () => {
     const newErrors: { [key: string]: string } = {}
@@ -296,8 +373,23 @@ export default function ResumeBuilderPage() {
   if (loading) {
     return (
       <CandidateLayout>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-          <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+          <div className="text-center">
+            <div className="relative w-24 h-24 mx-auto mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full animate-ping opacity-20"></div>
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full animate-pulse opacity-30"></div>
+              <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full w-24 h-24 flex items-center justify-center shadow-2xl">
+                <FileText className="w-12 h-12 text-white animate-pulse" />
+              </div>
+            </div>
+            <h3 className="text-2xl font-bold text-slate-900 mb-2">Loading Your Resume</h3>
+            <p className="text-slate-600">Preparing your workspace...</p>
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-2 h-2 bg-pink-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            </div>
+          </div>
         </div>
       </CandidateLayout>
     )
@@ -305,144 +397,252 @@ export default function ResumeBuilderPage() {
 
   const completedSteps = Object.values(sectionCompletions).filter(Boolean).length
   const progressPercentage = Math.round((completedSteps / 6) * 100)
+  const currentStepData = STEPS[currentStep - 1]
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
-                Resume Builder
-              </h1>
-              <p className="text-slate-600 text-lg">
-                Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].title}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              {autoSaving && (
-                <div className="flex items-center gap-2 text-sm text-blue-600">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Saving...
-                </div>
-              )}
-              <Button
-                onClick={saveResumeDataHandler}
-                disabled={saving}
-                variant="outline"
-                className="border-slate-200"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : 'Save'}
-              </Button>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <Card className="border-0 shadow-lg bg-white">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-slate-700">Overall Progress</span>
-                    <span className="text-sm font-bold text-blue-600">{progressPercentage}%</span>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+        {/* Top Bar */}
+        <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/candidate">
+                  <button className="p-2.5 hover:bg-slate-100 rounded-xl transition-all hover:scale-105">
+                    <Home className="w-5 h-5 text-slate-600" />
+                  </button>
+                </Link>
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 bg-gradient-to-br ${currentStepData.color} rounded-xl shadow-lg`}>
+                    <FileText className="w-5 h-5 text-white" />
                   </div>
-                  <Progress value={progressPercentage} className="h-2" />
+                  <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-slate-900">
+                      Resume Builder
+                    </h1>
+                    <p className="text-xs text-slate-500">
+                      {lastSaved && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Last saved {new Date(lastSaved).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                {STEPS.map((step, index) => {
+
+              <div className="flex items-center gap-2">
+                {autoSaving && (
+                  <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-3 py-2 rounded-lg border border-blue-200 animate-pulse">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span className="hidden sm:inline">Saving...</span>
+                  </div>
+                )}
+                <Link href="/candidate/resume/analyze">
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:scale-105 transition-all"
+                  >
+                    <Sparkles className="w-4 h-4 mr-1.5" />
+                    <span className="hidden sm:inline">AI Analyze</span>
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+          {/* Minimalistic Progress Section */}
+          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            {/* Compact Header */}
+            <div className={`bg-gradient-to-r ${currentStepData.color} p-4`}>
+              <div className="flex items-center justify-between text-white">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
+                    <currentStepData.icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">{currentStepData.title}</h2>
+                    <p className="text-white/90 text-xs">{currentStepData.description}</p>
+                  </div>
+                </div>
+                <Badge className="bg-white/20 text-white border-white/30 text-xs">
+                  Step {currentStep}/{STEPS.length}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Compact Progress Bar */}
+            <div className="p-4 bg-gradient-to-br from-slate-50 to-white">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-slate-700">Overall Progress</span>
+                <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  {progressPercentage}%
+                </span>
+              </div>
+
+              {/* Simple Progress Bar */}
+              <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1000 ease-out"
+                  style={{ width: `${progressPercentage}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 mt-2 mb-4 text-center">
+                {completedSteps} of 6 sections completed
+              </p>
+
+              {/* Compact Step Navigation */}
+              <div className="flex items-center gap-2 flex-wrap justify-center pt-3 border-t border-slate-200">
+                {STEPS.map((step) => {
                   const Icon = step.icon
                   const isCompleted = currentStep > step.id || (getSectionKey(step.id) && sectionCompletions[getSectionKey(step.id)!])
                   const isCurrent = currentStep === step.id
 
                   return (
-                    <div key={step.id} className="flex items-center">
-                      <button
-                        onClick={() => setCurrentStep(step.id)}
-                        className={cn(
-                          "flex flex-col items-center gap-2 p-3 rounded-xl transition-all min-w-[100px]",
-                          isCurrent ? "bg-blue-600 text-white" : isCompleted ? "bg-emerald-50 text-emerald-700" : "bg-slate-50 text-slate-400"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center",
-                          isCurrent ? "bg-blue-700" : isCompleted ? "bg-emerald-100" : "bg-slate-100"
-                        )}>
-                          {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                        </div>
-                        <span className="text-xs font-medium">{step.title}</span>
-                      </button>
-                      {index < STEPS.length - 1 && (
-                        <div className={cn(
-                          "h-0.5 w-4 mx-1",
-                          isCompleted ? "bg-emerald-500" : "bg-slate-200"
-                        )} />
+                    <button
+                      key={step.id}
+                      onClick={() => setCurrentStep(step.id)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all",
+                        isCurrent
+                          ? `bg-gradient-to-r ${step.color} text-white shadow-md`
+                          : isCompleted
+                            ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                       )}
-                    </div>
+                    >
+                      {isCompleted && !isCurrent ? (
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      ) : (
+                        <Icon className="w-3.5 h-3.5" />
+                      )}
+                      <span className="hidden sm:inline">{step.title}</span>
+                    </button>
                   )
                 })}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Form Content */}
-          <Card className="border-0 shadow-lg bg-white">
-            <CardContent className="p-8">
+          <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+            <div className="p-8 md:p-10">
               {switchResult(currentStep, resumeData, errors, updateResumeData, saving, saveAndContinue, sectionCompletions)}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Navigation */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-4 pb-8">
             <Button
+              size="lg"
               variant="outline"
               onClick={prevStep}
               disabled={currentStep === 1}
-              className="border-slate-200"
+              className="border-2 border-slate-300 hover:bg-slate-50 hover:border-slate-400 px-8 py-6 text-base font-semibold rounded-2xl hover:scale-105 transition-all disabled:opacity-50 disabled:hover:scale-100"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-5 h-5 mr-2" />
               Previous
             </Button>
 
             {currentStep === STEPS.length ? (
               <Button
+                size="lg"
                 onClick={saveAndContinue}
                 disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30"
+                className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 shadow-2xl shadow-emerald-600/40 px-10 py-6 text-base font-bold rounded-2xl hover:scale-105 transition-all"
               >
-                {saving ? 'Saving...' : 'Save & Continue to Dashboard'}
-                <ArrowRight className="w-4 h-4 ml-2" />
+                {saving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    Complete & Save
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </>
+                )}
               </Button>
             ) : (
               <Button
+                size="lg"
                 onClick={nextStep}
                 disabled={saving || autoSaving}
-                className="bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30"
+                className={`bg-gradient-to-r ${currentStepData.color} hover:opacity-90 shadow-2xl px-10 py-6 text-base font-bold rounded-2xl hover:scale-105 transition-all`}
               >
-                Save & Next
-                <ArrowRight className="w-4 h-4 ml-2" />
+                Continue
+                <ArrowRight className="w-5 h-5 ml-2" />
               </Button>
             )}
           </div>
         </div>
       </div>
-    </CandidateLayout >
+    </CandidateLayout>
   )
 }
 
-function switchResult(step: number, data: any, errors: any, onChange: any, saving: boolean, onFinalSave: any, completions: any) {
+function switchResult(step: number, data: ResumeData, errors: any, onChange: (section: keyof ResumeData, value: any) => void, saving: boolean, onFinalSave: any, completions: any) {
+  // PersonalInfo and ProfessionalSummary components call onChange('personalInfo', fullObject)
+  // Other components call onChange(section, array)
+
   switch (step) {
-    case 1: return <PersonalInfoComponent data={data} errors={errors} onChange={onChange} />
-    case 2: return <ProfessionalSummaryComponent data={data} errors={errors} onChange={onChange} />
-    case 3: return <ExperienceComponent data={data} errors={errors} onChange={onChange} />
-    case 4: return <EducationComponent data={data} errors={errors} onChange={onChange} />
-    case 5: return <SkillsComponent data={data} errors={errors} onChange={onChange} />
-    case 6: return <ProjectsComponent data={data} errors={errors} onChange={onChange} />
-    case 7: return <CertificatesComponent data={data} errors={errors} onChange={onChange} />
-    case 8: return <ResumePreviewComponent data={data} onFinalSave={onFinalSave} isLoading={saving} completedSections={completions} />
-    default: return <div>Step not found</div>
+    case 1:
+      return <PersonalInfoComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 2:
+      return <ProfessionalSummaryComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 3:
+      return <ExperienceComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 4:
+      return <EducationComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 5:
+      return <SkillsComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 6:
+      return <ProjectsComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 7:
+      return <CertificatesComponent
+        data={data}
+        errors={errors}
+        onChange={onChange}
+      />
+    case 8:
+      return <ResumePreviewComponent
+        data={data}
+        onFinalSave={onFinalSave}
+        isLoading={saving}
+        completedSections={completions}
+      />
+    default:
+      return <div>Step not found</div>
   }
 }

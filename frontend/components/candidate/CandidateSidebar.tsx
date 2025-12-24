@@ -88,6 +88,17 @@ function AppSidebar() {
       className="border-r border-slate-200 bg-white"
       collapsible="icon"
     >
+      {/* Toggle Button */}
+      <button
+        onClick={toggleSidebar}
+        className={cn(
+          "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-blue-700",
+          !isExpanded && "rotate-180"
+        )}
+      >
+        <ChevronLeft className="w-3 h-3 text-white" />
+      </button>
+
       {/* Sidebar Header */}
       <SidebarHeader className="border-b border-slate-200 p-4">
         <div className="flex items-center justify-between">
@@ -105,99 +116,52 @@ function AppSidebar() {
             )}
           </div>
         </div>
-        <button
-          onClick={toggleSidebar}
-          className={cn(
-            "absolute -right-3 top-20 z-50 w-6 h-6 rounded-full bg-blue-600 border-2 border-white shadow-lg flex items-center justify-center transition-all duration-300 hover:scale-110 hover:bg-blue-700",
-            !isExpanded && "rotate-180"
-          )}
-        >
-          <ChevronLeft className="w-3 h-3 text-white" />
-        </button>
       </SidebarHeader>
 
       {/* Sidebar Content */}
-      <SidebarContent className="px-3 py-4">
+      <SidebarContent className="p-3">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
               {sidebarItems.map((item) => {
+                const Icon = item.icon
                 const active = isActive(item.path)
                 return (
                   <SidebarMenuItem key={item.path}>
                     <button
                       onClick={() => handleNavigation(item.path)}
                       className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden",
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
                         active
-                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
-                        !isExpanded && "justify-center px-3"
+                          ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       )}
-                      title={!isExpanded ? item.label : undefined}
                     >
-                      <item.icon className={cn(
-                        "h-5 w-5 flex-shrink-0 transition-transform duration-200",
-                        active ? "scale-110" : "group-hover:scale-110"
-                      )} />
-
+                      <Icon className={cn("w-5 h-5 flex-shrink-0")} />
                       {isExpanded && (
-                        <span className="font-medium">
+                        <span className="font-medium text-sm truncate">
                           {item.label}
                         </span>
-                      )}
-
-                      {active && (
-                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-l-full" />
                       )}
                     </button>
                   </SidebarMenuItem>
                 )
               })}
-
-              {/* Divider */}
-              <div className="my-3 border-t border-slate-200" />
-
-              {/* Logout */}
-              <SidebarMenuItem>
-                <button
-                  onClick={handleLogout}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative overflow-hidden text-rose-600 hover:bg-rose-50 hover:text-rose-700",
-                    !isExpanded && "justify-center px-3"
-                  )}
-                  title={!isExpanded ? "Logout" : undefined}
-                >
-                  <LogOut className="h-5 w-5 flex-shrink-0 transition-transform duration-200 group-hover:scale-110" />
-
-                  {isExpanded && (
-                    <span className="font-medium">
-                      Logout
-                    </span>
-                  )}
-                </button>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Sidebar Footer (User Profile) */}
+      {/* Sidebar Footer */}
       {user && (
         <SidebarFooter className="border-t border-slate-200 p-3">
-          <div
-            className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 rounded-xl p-2.5 transition-all duration-200 group"
-            onClick={() => handleNavigation("/candidate/profile")}
-          >
-            <div className="relative flex-shrink-0">
-              <Avatar className="h-10 w-10 border-2 border-blue-100 group-hover:border-blue-200 transition-all duration-200">
-                <AvatarImage src="/placeholder.svg" />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
-                  {getInitials(user.full_name || user.email || "U")}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white" />
-            </div>
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+            <Avatar className="w-9 h-9 border-2 border-white shadow-sm flex-shrink-0">
+              <AvatarImage src={user.avatar_url || undefined} />
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-semibold">
+                {getInitials(user.full_name || user.email || "U")}
+              </AvatarFallback>
+            </Avatar>
             {isExpanded && (
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-900 truncate">
@@ -209,6 +173,18 @@ function AppSidebar() {
               </div>
             )}
           </div>
+          <button
+            onClick={handleLogout}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
+              "text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+            )}
+          >
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {isExpanded && (
+              <span className="font-medium text-sm">Logout</span>
+            )}
+          </button>
         </SidebarFooter>
       )}
     </Sidebar>

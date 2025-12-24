@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import CandidateLayout from "@/layouts/CandidateLayout";
 import {
   getApplications,
   bulkWithdrawApplications,
-  bulkArchiveApplications,
   exportApplications,
   type ApplicationListItem,
   type ApplicationStatus,
@@ -16,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Calendar,
   ChevronDown,
@@ -25,31 +24,21 @@ import {
   Filter,
   Loader2,
   Search,
-  X,
   Briefcase,
   Building2,
   Clock,
-  ArrowUpRight,
   FileDown,
   CheckCircle2,
   AlertCircle,
-  MoreHorizontal,
-  Mail,
-  Trash2,
-  Sparkles,
-  ArrowRight,
-  Target,
-  Trophy,
-  Eye,
   TrendingUp,
+  ArrowRight,
+  Eye,
+  MessageSquare,
 } from "lucide-react";
-import Link from "next/link";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import toast from "react-hot-toast";
@@ -69,24 +58,24 @@ function getStatusBadgeClasses(status: ApplicationStatus): string {
   switch (status) {
     case "applied":
     case "pending":
-      return cn(base, "bg-blue-100 text-blue-700 border-blue-200");
+      return cn(base, "bg-blue-50 text-blue-700 border-blue-200");
     case "viewed":
     case "reviewing":
-      return cn(base, "bg-indigo-100 text-indigo-700 border-indigo-200");
+      return cn(base, "bg-indigo-50 text-indigo-700 border-indigo-200");
     case "shortlisted":
-      return cn(base, "bg-emerald-100 text-emerald-700 border-emerald-200");
+      return cn(base, "bg-emerald-50 text-emerald-700 border-emerald-200");
     case "interview":
-      return cn(base, "bg-purple-100 text-purple-700 border-purple-200");
+      return cn(base, "bg-purple-50 text-purple-700 border-purple-200");
     case "offer":
-      return cn(base, "bg-amber-100 text-amber-700 border-amber-200");
+      return cn(base, "bg-amber-50 text-amber-700 border-amber-200");
     case "accepted":
-      return cn(base, "bg-green-100 text-green-700 border-green-200");
+      return cn(base, "bg-green-50 text-green-700 border-green-200");
     case "withdrawn":
     case "archived":
-      return cn(base, "bg-slate-100 text-slate-600 border-slate-200");
+      return cn(base, "bg-slate-50 text-slate-600 border-slate-200");
     case "rejected":
     default:
-      return cn(base, "bg-rose-100 text-rose-700 border-rose-200");
+      return cn(base, "bg-rose-50 text-rose-700 border-rose-200");
   }
 }
 
@@ -102,7 +91,9 @@ function formatRelativeDate(value?: string | null): string {
   if (minutes < 1) return "Just now";
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
-  return `${days}d ago`;
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 export default function CandidateApplicationsPage() {
@@ -110,7 +101,7 @@ export default function CandidateApplicationsPage() {
 
   const [applications, setApplications] = useState<ApplicationListItem[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
@@ -118,14 +109,22 @@ export default function CandidateApplicationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeStatus, setActiveStatus] = useState<string>("all");
-  const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const [sort] = useState<"newest" | "oldest">("newest");
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isMounted = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm.trim()), 350);
@@ -133,7 +132,7 @@ export default function CandidateApplicationsPage() {
   }, [searchTerm]);
 
   const fetchApplications = async () => {
-    if (authLoading || !user) return;
+    if (authLoading || !user || !isMounted.current) return;
     try {
       setIsLoading(true);
       setError(null);
@@ -146,22 +145,28 @@ export default function CandidateApplicationsPage() {
       const params: any = {
         page,
         page_size: pageSize,
-        sort_by: sort === "newest" ? "created_at" : "created_at",
+        sort_by: "created_at",
         sort_order: sort === "newest" ? "desc" : "asc",
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (activeStatus !== "all") params.status = activeStatus;
 
       const data = await getApplications(token, params);
-      setApplications(data.applications || []);
-      setTotal(data.total || 0);
-      setTotalPages(data.total_pages || 1);
-      setStatusCounts(data.status_counts || {});
+      if (isMounted.current) {
+        setApplications(data.applications || []);
+        setTotal(data.total || 0);
+        setTotalPages(data.total_pages || 1);
+        setStatusCounts(data.status_counts || {});
+      }
     } catch (err: any) {
       console.error("Error fetching applications:", err);
-      setError(err.message || "Failed to load applications.");
+      if (isMounted.current) {
+        setError(err.message || "Failed to load applications.");
+      }
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -225,23 +230,23 @@ export default function CandidateApplicationsPage() {
   return (
     <CandidateLayout>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-6xl mx-auto space-y-6">
 
           {/* Header */}
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">
               My Applications
             </h1>
-            <p className="text-slate-600 text-lg">
+            <p className="text-slate-600">
               Track and manage your job applications
             </p>
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               icon={Briefcase}
-              label="Total Applications"
+              label="Total"
               value={stats.totalApps}
               color="blue"
             />
@@ -265,25 +270,25 @@ export default function CandidateApplicationsPage() {
             />
           </div>
 
-          {/* Filters & Actions */}
+          {/* Search & Filters */}
           <Card className="border-0 shadow-lg bg-white">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-4">
+            <CardContent className="p-5">
+              <div className="flex flex-col md:flex-row gap-3">
                 <div className="flex-1">
                   <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input
                       placeholder="Search by job title or company..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-12 h-12 border-slate-200"
+                      className="pl-10 h-10 border-slate-200"
                     />
                   </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-12 border-slate-200">
+                      <Button variant="outline" size="sm" className="h-10 border-slate-200">
                         <Filter className="w-4 h-4 mr-2" />
                         {STATUS_FILTERS.find(f => f.value === activeStatus)?.label || "Filter"}
                         <ChevronDown className="w-4 h-4 ml-2" />
@@ -311,8 +316,9 @@ export default function CandidateApplicationsPage() {
                   </DropdownMenu>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={handleExport}
-                    className="h-12 border-slate-200"
+                    className="h-10 border-slate-200"
                   >
                     <FileDown className="w-4 h-4 mr-2" />
                     Export
@@ -321,16 +327,16 @@ export default function CandidateApplicationsPage() {
               </div>
 
               {selectedIds.size > 0 && (
-                <div className="mt-4 flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="mt-3 flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
                   <span className="text-sm font-medium text-blue-900">
-                    {selectedIds.size} application(s) selected
+                    {selectedIds.size} selected
                   </span>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setSelectedIds(new Set())}
-                      className="border-blue-200"
+                      className="border-blue-200 h-8"
                     >
                       Clear
                     </Button>
@@ -339,6 +345,7 @@ export default function CandidateApplicationsPage() {
                       size="sm"
                       onClick={handleBulkWithdraw}
                       disabled={isBulkLoading}
+                      className="h-8"
                     >
                       {isBulkLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Withdraw"}
                     </Button>
@@ -350,22 +357,22 @@ export default function CandidateApplicationsPage() {
 
           {/* Applications List */}
           {isLoading ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-32 w-full rounded-xl" />
+                <Skeleton key={i} className="h-28 w-full rounded-xl" />
               ))}
             </div>
           ) : error ? (
             <Card className="border-0 shadow-lg bg-white">
               <CardContent className="p-12 text-center">
-                <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+                <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-slate-900 mb-2">Error Loading Applications</h3>
                 <p className="text-slate-600">{error}</p>
               </CardContent>
             </Card>
           ) : applications.length === 0 ? (
             <Card className="border-0 shadow-lg bg-white">
-              <CardContent className="p-12 text-center">
+              <CardContent className="p-16 text-center">
                 <Briefcase className="w-16 h-16 text-slate-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">No applications yet</h3>
                 <p className="text-slate-500 mb-6">Start applying to jobs to see them here</p>
@@ -379,7 +386,7 @@ export default function CandidateApplicationsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {applications.map((app) => (
                 <ApplicationCard
                   key={app.id}
@@ -403,7 +410,7 @@ export default function CandidateApplicationsPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-600">
-                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, total)} of {total} applications
+                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, total)} of {total}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -448,19 +455,19 @@ function StatCard({ icon: Icon, label, value, color }: {
   };
 
   return (
-    <Card className="border-0 shadow-lg bg-white">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
+    <Card className="border-0 shadow-md bg-white">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
           <div className={cn(
-            "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg",
+            "w-10 h-10 rounded-lg bg-gradient-to-br flex items-center justify-center text-white shadow-sm flex-shrink-0",
             colorClasses[color]
           )}>
-            <Icon className="w-6 h-6" />
+            <Icon className="w-5 h-5" />
           </div>
-        </div>
-        <div>
-          <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>
-          <p className="text-sm text-slate-600 font-medium">{label}</p>
+          <div>
+            <p className="text-2xl font-bold text-slate-900">{value}</p>
+            <p className="text-xs text-slate-600 font-medium">{label}</p>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -473,8 +480,8 @@ function ApplicationCard({ application, isSelected, onToggleSelect }: {
   onToggleSelect: (id: string) => void;
 }) {
   return (
-    <Card className="border-0 shadow-lg bg-white hover:shadow-xl transition-all group">
-      <CardContent className="p-6">
+    <Card className="border-0 shadow-md hover:shadow-lg transition-all group bg-white">
+      <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <input
             type="checkbox"
@@ -482,13 +489,13 @@ function ApplicationCard({ application, isSelected, onToggleSelect }: {
             onChange={() => onToggleSelect(application.id)}
             className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
           />
-          <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-md flex-shrink-0">
+          <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm flex-shrink-0">
             {application.job_title?.charAt(0) || 'J'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-4 mb-3">
+            <div className="flex items-start justify-between gap-4 mb-2">
               <div className="flex-1">
-                <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-1">
+                <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-1 line-clamp-1">
                   {application.job_title}
                 </h3>
                 <p className="text-sm text-slate-600 flex items-center gap-2">
@@ -500,14 +507,14 @@ function ApplicationCard({ application, isSelected, onToggleSelect }: {
                 {application.status}
               </Badge>
             </div>
-            <div className="flex items-center gap-6 text-sm text-slate-500">
+            <div className="flex items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
+                <Calendar className="w-3.5 h-3.5" />
                 Applied {formatRelativeDate(application.applied_at)}
               </span>
               {application.last_updated && (
                 <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" />
+                  <Clock className="w-3.5 h-3.5" />
                   Updated {formatRelativeDate(application.last_updated)}
                 </span>
               )}
