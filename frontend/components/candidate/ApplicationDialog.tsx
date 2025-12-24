@@ -1,76 +1,141 @@
-"use client"
-
 import { useState } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Job } from "@/lib/api/jobs"
-import { Loader2 } from "lucide-react"
+import { Building, MapPin, Briefcase, DollarSign, Sparkles, Send, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 interface ApplicationDialogProps {
-    job: Job | null
-    isOpen: boolean
-    onClose: () => void
-    onConfirm: (jobId: string, notes: string) => Promise<void>
+    job: Job
+    open: boolean
+    onOpenChange: (open: boolean) => void
+    onConfirm: (note?: string) => Promise<void>
 }
 
-export function ApplicationDialog({ job, isOpen, onClose, onConfirm }: ApplicationDialogProps) {
-    const [notes, setNotes] = useState("")
-    const [isSubmitting, setIsSubmitting] = useState(false)
+export function ApplicationDialog({
+    job,
+    open,
+    onOpenChange,
+    onConfirm,
+}: ApplicationDialogProps) {
+    const [note, setNote] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
 
     const handleSubmit = async () => {
-        if (!job) return
-
+        setIsLoading(true)
         try {
-            setIsSubmitting(true)
-            await onConfirm(job.id, notes)
-            setNotes("") // Reset
-            onClose()
+            await onConfirm(note)
+            setNote("")
+            onOpenChange(false)
         } catch (error) {
             // Error handled by parent
         } finally {
-            setIsSubmitting(false)
+            setIsLoading(false)
         }
     }
 
-    if (!job) return null
-
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                    <DialogTitle>Apply for {job.job_title}</DialogTitle>
-                    <DialogDescription>
-                        You are applying to <span className="font-semibold text-foreground">{job.company_name}</span>.
-                        Review your details below.
-                    </DialogDescription>
-                </DialogHeader>
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[550px] p-0 gap-0 overflow-hidden">
+                {/* Header with gradient */}
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-5">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-bold text-white mb-2">
+                            Apply for Position
+                        </DialogTitle>
+                        <DialogDescription className="text-blue-100">
+                            Submit your application to join the team
+                        </DialogDescription>
+                    </DialogHeader>
+                </div>
 
-                <div className="grid gap-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="notes">Why are you a good fit? (Optional)</Label>
-                        <Textarea
-                            id="notes"
-                            placeholder="Briefly describe your relevant experience or add a note to the hiring manager..."
-                            className="resize-none h-32"
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                        />
-                    </div>
+                {/* Job Details Card */}
+                <div className="px-6 pt-5 pb-4">
+                    <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
+                        <div className="flex items-start gap-3 mb-3">
+                            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-sm">
+                                {job.company_name?.charAt(0) || 'C'}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-slate-900 text-lg mb-1 line-clamp-1">
+                                    {job.job_title}
+                                </h3>
+                                <div className="flex items-center gap-2 text-slate-600 text-sm">
+                                    <Building className="w-4 h-4" />
+                                    <span className="font-medium">{job.company_name}</span>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div className="bg-muted/50 p-3 rounded-lg text-sm text-muted-foreground">
-                        <p>Your profile and resume will be shared with the employer.</p>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline" className="bg-white text-slate-700 border-slate-200">
+                                <MapPin className="w-3 h-3 mr-1" />
+                                {job.location}
+                            </Badge>
+                            <Badge variant="outline" className="bg-white text-slate-700 border-slate-200">
+                                <Briefcase className="w-3 h-3 mr-1" />
+                                {job.job_type}
+                            </Badge>
+                        </div>
                     </div>
                 </div>
 
-                <DialogFooter>
-                    <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+                {/* Form */}
+                <div className="px-6 pb-5">
+                    <div className="space-y-3">
+                        <div>
+                            <Label htmlFor="note" className="text-sm font-semibold text-slate-700 mb-2 block">
+                                Cover Letter / Note <span className="text-slate-400 font-normal">(Optional)</span>
+                            </Label>
+                            <Textarea
+                                id="note"
+                                placeholder="Tell us why you're a great fit for this role..."
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                className="h-32 resize-none border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                            />
+                            <p className="text-xs text-slate-500 mt-2">
+                                {note.length} / 500 characters
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex-row gap-3 sm:gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                        disabled={isLoading}
+                        className="flex-1 h-11 border-slate-200"
+                    >
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Submit Application
+                    <Button
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                        className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg shadow-blue-600/30"
+                    >
+                        {isLoading ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                Submitting...
+                            </>
+                        ) : (
+                            <>
+                                <Send className="w-4 h-4 mr-2" />
+                                Submit Application
+                            </>
+                        )}
                     </Button>
                 </DialogFooter>
             </DialogContent>

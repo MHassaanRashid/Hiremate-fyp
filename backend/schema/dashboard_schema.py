@@ -23,6 +23,11 @@ class DashboardStatsSchema(BaseModel):
     interviewsScheduled: int
     profileViews: int
     profileScore: int
+    # Trend fields (percentage change from previous period)
+    applicationsTrend: Optional[float] = None
+    profileViewsTrend: Optional[float] = None
+    interviewsTrend: Optional[float] = None
+    profileScoreTrend: Optional[float] = None
     
     class Config:
         from_attributes = True

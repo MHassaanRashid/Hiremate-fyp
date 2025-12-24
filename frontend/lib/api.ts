@@ -15,12 +15,37 @@ export const handleResponse = async (res: Response) => {
             clearAuthSession();
           } else {
             // Fallback if global function not available
+            // Determine role-specific redirect before clearing localStorage
+            let roleBasedRedirect = '/auth/candidate'; // Default fallback
+
+            try {
+              const storedUser = localStorage.getItem("user");
+              if (storedUser) {
+                const userData = JSON.parse(storedUser);
+                const userRole = userData.role;
+
+                // Map role to appropriate auth page
+                if (userRole === "recruiter") {
+                  roleBasedRedirect = "/auth/company";
+                } else if (userRole === "interviewer") {
+                  roleBasedRedirect = "/auth/interviewer";
+                } else {
+                  roleBasedRedirect = "/auth/candidate";
+                }
+              }
+            } catch (error) {
+              console.log("Could not determine user role, using default redirect");
+            }
+
+            // Clear session data
             localStorage.removeItem("user");
             localStorage.removeItem("access_token");
             document.cookie = "access_token=; path=/; max-age=0; SameSite=Strict";
             document.cookie = "refresh_token=; path=/; max-age=0; SameSite=Strict";
+            document.cookie = "user_role=; path=/; max-age=0; SameSite=Strict";
+
             if (!window.location.pathname.startsWith('/auth')) {
-              window.location.href = '/auth/candidate';
+              window.location.href = roleBasedRedirect;
             }
           }
         }

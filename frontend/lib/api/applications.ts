@@ -18,16 +18,16 @@ export type ApplicationStatus =
 
 export interface ApplicationListItem {
   id: string;
-  jobTitle: string;
-  company: string;
-  companyLogo?: string | null;
-  appliedDate: string;
+  job_title: string;
+  company_name: string;
+  company_logo?: string | null;
+  applied_at: string;
   status: ApplicationStatus;
-  pipelineStage: string;
-  lastUpdatedAt?: string | null;
-  nextStep?: string | null;
+  pipeline_stage: string;
+  last_updated?: string | null;
+  next_step?: string | null;
   location?: string | null;
-  employmentType?: string | null;
+  employment_type?: string | null;
 }
 
 export interface ApplicationStatusCounts {
@@ -43,8 +43,10 @@ export interface ApplicationsMeta {
 }
 
 export interface ApplicationsListResponse {
-  items: ApplicationListItem[];
-  meta: ApplicationsMeta;
+  applications: ApplicationListItem[];
+  total: number;
+  total_pages: number;
+  status_counts: ApplicationStatusCounts;
 }
 
 export interface ApplicationsQuery {

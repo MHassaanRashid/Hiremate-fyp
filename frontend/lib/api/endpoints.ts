@@ -43,7 +43,22 @@ export const SettingsEndpoints = {
   ACCOUNT_DELETE: `${SETTINGS_API_BASE}/account`,
 };
 
+const JOBS_API_BASE = `${BACKEND_URL}/jobs`;
+
 export const JobEndpoints = {
-  LIST: `${BACKEND_URL}/jobs/`,
-  DETAIL: (id: string) => `${BACKEND_URL}/jobs/${id}`,
+  LIST: `${JOBS_API_BASE}/`,
+  DETAIL: (id: string) => `${JOBS_API_BASE}/${id}`,
+  APPLY: (id: string) => `${JOBS_API_BASE}/${id}/apply`,
 };
+
+const RESUME_ANALYZER_API_BASE = `${BACKEND_URL}/resume-analyzer`;
+
+export const ResumeAnalyzerEndpoints = {
+  ANALYZE: `${RESUME_ANALYZER_API_BASE}/analyze`,
+  ANALYZE_FOR_JOB: (jobId: string) => `${RESUME_ANALYZER_API_BASE}/analyze-for-job/${jobId}`,
+  HISTORY: `${RESUME_ANALYZER_API_BASE}/history`,
+  LATEST: `${RESUME_ANALYZER_API_BASE}/latest`,
+  QUICK: `${RESUME_ANALYZER_API_BASE}/quick`,
+  DELETE: (analysisId: string) => `${RESUME_ANALYZER_API_BASE}/${analysisId}`,
+};
+

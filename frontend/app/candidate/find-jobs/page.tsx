@@ -1,385 +1,425 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
-import { useAuth } from "@/contexts/auth-context"
+import { useState, useEffect, useRef } from "react"
 import CandidateLayout from "@/layouts/CandidateLayout"
-import { getJobs, applyToJob, type Job } from "@/lib/api/jobs"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useToast } from "@/components/ui/use-toast"
-import { ApplicationDialog } from "@/components/candidate/ApplicationDialog"
 import {
     Search,
     MapPin,
     Briefcase,
     DollarSign,
-    Clock,
-    Filter,
-    Building2,
-    Calendar,
-    ChevronLeft,
+    Building,
     ChevronRight,
-    ArrowUpRight,
+    Filter,
+    Clock,
     Sparkles,
-    SlidersHorizontal
+    ArrowUpRight,
+    Loader2,
+    TrendingUp,
+    Users,
+    Bookmark,
+    BookmarkCheck,
+    Calendar,
+    Award,
+    MoreHorizontal,
+    Share2,
+    ExternalLink,
+    Zap,
 } from "lucide-react"
+import { getJobs, Job, applyToJob } from "@/lib/api/jobs"
+import { supabase } from "@/lib/supabaseClient"
+import toast from "react-hot-toast"
+import { ApplicationDialog } from "@/components/candidate/ApplicationDialog"
 import { cn } from "@/lib/utils"
-import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-
-const JOB_TYPES = [
-    { label: "All Types", value: "all" },
-    { label: "Full-time", value: "full-time" },
-    { label: "Part-time", value: "part-time" },
-    { label: "Contract", value: "contract" },
-    { label: "Remote", value: "remote" },
-    { label: "Hybrid", value: "hybrid" }
-]
 
 export default function FindJobsPage() {
-    const { user, isLoading: authLoading } = useAuth()
-    const { toast } = useToast()
-
     const [jobs, setJobs] = useState<Job[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-
-    // Application Dialog State
+    const [loading, setLoading] = useState(true)
+    const [search, setSearch] = useState("")
+    const [location, setLocation] = useState("All Locations")
+    const [type, setType] = useState("All Types")
     const [selectedJob, setSelectedJob] = useState<Job | null>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set())
+
+    // Prevent duplicate toasts
+    const lastToastTime = useRef<number>(0)
+    const isMounted = useRef(false)
+
+    // Load saved jobs from localStorage on mount
+    useEffect(() => {
+        isMounted.current = true
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('savedJobs')
+            if (saved) {
+                setSavedJobs(new Set(JSON.parse(saved)))
+            }
+        }
+        return () => {
+            isMounted.current = false
+        }
+    }, [])
+
+    const fetchJobs = async () => {
+        if (!isMounted.current) return
+
+        setLoading(true)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                const data = await getJobs(session.access_token, search, location, type)
+                if (isMounted.current) {
+                    setJobs(data)
+                }
+            }
+        } catch (error) {
+            console.error("Error fetching jobs:", error)
+            if (isMounted.current) {
+                toast.error("Failed to load jobs")
+            }
+        } finally {
+            if (isMounted.current) {
+                setLoading(false)
+            }
+        }
+    }
+
+    useEffect(() => {
+        fetchJobs()
+    }, [])
+
+    const handleSearch = () => {
+        fetchJobs()
+    }
 
     const handleApplyClick = (job: Job) => {
         setSelectedJob(job)
         setIsDialogOpen(true)
     }
 
-    const handleConfirmApply = async (jobId: string, notes: string) => {
-        const token = localStorage.getItem("access_token")
-        if (!token) return
+    const handleConfirmApply = async (note?: string) => {
+        if (!selectedJob) return
 
         try {
-            await applyToJob(token, jobId, notes)
-            toast({
-                title: "Application Submitted!",
-                description: "Good luck! The employer has received your application.",
-                variant: "default", // or "success" if configured
-            })
-        } catch (err: any) {
-            toast({
-                title: "Application Failed",
-                description: err.message || "Something went wrong.",
-                variant: "destructive",
-            })
-            throw err // Re-throw to let dialog handle loading state if needed
-        }
-    }
-
-    // Filters
-    const [searchTerm, setSearchTerm] = useState("")
-    const [debouncedSearch, setDebouncedSearch] = useState("")
-    const [location, setLocation] = useState("")
-    const [debouncedLocation, setDebouncedLocation] = useState("")
-    const [jobType, setJobType] = useState("all")
-    const [page, setPage] = useState(1)
-    const pageSize = 12
-
-    // Debounce inputs
-    useEffect(() => {
-        const t = setTimeout(() => {
-            setDebouncedSearch(searchTerm)
-            setDebouncedLocation(location)
-        }, 500)
-        return () => clearTimeout(t)
-    }, [searchTerm, location])
-
-    // Fetch jobs
-    useEffect(() => {
-        const fetchJobs = async () => {
-            if (!user) return
-
-            const token = localStorage.getItem("access_token")
-            if (!token) {
-                setError("Please login to find jobs")
-                setIsLoading(false)
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                toast.error("Please log in to apply")
                 return
             }
 
-            try {
-                setIsLoading(true)
-                setError(null)
-                const data = await getJobs(token, {
-                    search: debouncedSearch,
-                    location: debouncedLocation,
-                    jobType: jobType === 'all' ? undefined : jobType,
-                    page,
-                    pageSize
-                })
-                setJobs(data || [])
-            } catch (err: any) {
-                console.error("Error fetching jobs:", err)
-                setError("Failed to load jobs. Please try again.")
-            } finally {
-                setIsLoading(false)
-            }
+            await applyToJob(session.access_token, selectedJob.id, note)
+            toast.success("Application submitted successfully!")
+            setIsDialogOpen(false)
+            setSelectedJob(null)
+        } catch (error: any) {
+            toast.error(error.message || "Failed to submit application")
         }
-
-        if (!authLoading && user) {
-            fetchJobs()
-        }
-    }, [user, authLoading, debouncedSearch, debouncedLocation, jobType, page])
-
-    const handleClearFilters = () => {
-        setSearchTerm("")
-        setLocation("")
-        setJobType("all")
-        setPage(1)
     }
 
-    const hasActiveFilters = useMemo(() => {
-        return !!debouncedSearch || !!debouncedLocation || jobType !== "all"
-    }, [debouncedSearch, debouncedLocation, jobType])
+    const toggleSaveJob = (jobId: string, e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault()
+            e.stopPropagation()
+        }
 
-    if (authLoading || !user) {
-        return (
-            <CandidateLayout>
-                <div className="min-h-screen bg-slate-50/50">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
-                        <div className="space-y-6">
-                            <Skeleton className="h-14 w-64 rounded-xl" />
-                            <Skeleton className="h-20 w-full rounded-2xl" />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <Skeleton key={i} className="h-72 w-full rounded-2xl" />
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            </CandidateLayout>
-        )
+        // Prevent duplicate calls within 300ms
+        const now = Date.now()
+        if (now - lastToastTime.current < 300) {
+            return
+        }
+        lastToastTime.current = now
+
+        // Check current state BEFORE updating
+        const wasSaved = savedJobs.has(jobId)
+
+        setSavedJobs(prev => {
+            const newSet = new Set(prev)
+            if (newSet.has(jobId)) {
+                newSet.delete(jobId)
+            } else {
+                newSet.add(jobId)
+            }
+            // Save to localStorage
+            localStorage.setItem('savedJobs', JSON.stringify(Array.from(newSet)))
+            return newSet
+        })
+
+        // Show toast AFTER setState
+        if (wasSaved) {
+            toast.success("Job removed from saved")
+        } else {
+            toast.success("Job saved for later")
+        }
     }
 
     return (
         <CandidateLayout>
-            <div className="min-h-screen bg-slate-50/50 font-sans text-slate-900 pb-20">
-                {/* Hero Section */}
-                <div className="bg-white border-b border-indigo-100/50 pb-8 pt-10 sticky top-0 z-30 shadow-sm/50 backdrop-blur-3xl bg-white/80 supports-[backdrop-filter]:bg-white/60">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
+                <div className="max-w-4xl mx-auto space-y-6">
 
-                        {/* Title Header */}
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                            <div className="space-y-2">
-                                <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
-                                    Find Your <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-indigo-500">Next Role</span>
-                                </h1>
-                                <p className="text-lg text-slate-500 font-medium max-w-2xl">
-                                    Discover opportunities that match your skills, experience, and career goals.
-                                </p>
-                            </div>
-
-                        </div>
-
-                        {/* Search & Filters Bar */}
-                        <div className="bg-white rounded-2xl shadow-xl shadow-indigo-100/50 border border-slate-200 p-2 md:p-3 flex flex-col md:flex-row items-center gap-3">
-                            {/* Search Input */}
-                            <div className="relative flex-1 w-full md:w-auto">
-                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <Input
-                                    className="pl-11 h-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500 rounded-xl text-base placeholder:text-slate-400 transition-all shadow-sm"
-                                    placeholder="Search by job title, company, or keywords..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Location Input */}
-                            <div className="relative w-full md:w-72">
-                                <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                                <Input
-                                    className="pl-11 h-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500 rounded-xl text-base placeholder:text-slate-400 transition-all shadow-sm"
-                                    placeholder="Location (e.g. Remote)"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
-                                />
-                            </div>
-
-                            {/* Divider for Desktop */}
-                            <div className="hidden md:block h-8 w-px bg-slate-200 mx-1" />
-
-                            {/* Job Type Select */}
-                            <div className="w-full md:w-48">
-                                <Select value={jobType} onValueChange={setJobType}>
-                                    <SelectTrigger className="h-12 bg-slate-50 border-transparent focus:bg-white focus:border-indigo-500 rounded-xl text-base shadow-sm">
-                                        <SelectValue placeholder="Job Type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {JOB_TYPES.map((type) => (
-                                            <SelectItem key={type.value} value={type.value}>
-                                                {type.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {/* Clear Filters Button */}
-                            {hasActiveFilters && (
-                                <Button
-                                    variant="ghost"
-                                    onClick={handleClearFilters}
-                                    className="h-12 px-4 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors font-medium whitespace-nowrap"
-                                >
-                                    Clear
-                                </Button>
-                            )}
-                        </div>
+                    {/* Integrated Header */}
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Discover Jobs</h1>
+                        <p className="text-slate-600">
+                            <span className="font-semibold text-blue-600">{jobs.length}</span> opportunities available
+                        </p>
                     </div>
-                </div>
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-                    {/* Status/Loading/Result States */}
-                    {isLoading ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <div key={i} className="h-[320px] rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-                                    <div className="flex items-center gap-4">
-                                        <Skeleton className="h-12 w-12 rounded-xl" />
-                                        <div className="space-y-2">
-                                            <Skeleton className="h-5 w-32" />
-                                            <Skeleton className="h-4 w-20" />
-                                        </div>
+                    {/* Search Card */}
+                    <Card className="border-0 shadow-lg bg-white">
+                        <CardContent className="p-5">
+                            <div className="space-y-3">
+                                <div className="flex gap-3">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <Input
+                                            placeholder="Search by job title, keyword, or company..."
+                                            value={search}
+                                            onChange={(e) => setSearch(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                            className="pl-10 h-10 border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                                        />
                                     </div>
-                                    <Skeleton className="h-24 w-full rounded-xl" />
-                                    <div className="pt-4 flex items-center justify-between">
-                                        <Skeleton className="h-10 w-28 rounded-xl" />
-                                        <Skeleton className="h-10 w-10 rounded-xl" />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : error ? (
-                        <div className="rounded-2xl bg-red-50 border border-red-100 p-10 text-center">
-                            <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span className="text-3xl">⚠️</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-red-900 mb-2">Something went wrong</h3>
-                            <p className="text-red-600 mb-6">{error}</p>
-                            <Button onClick={() => window.location.reload()} variant="outline" className="bg-white border-red-200 text-red-700 hover:bg-red-50">
-                                Try Again
-                            </Button>
-                        </div>
-                    ) : jobs.length === 0 ? (
-                        <div className="rounded-3xl bg-white border border-dashed border-slate-300 p-16 text-center shadow-sm">
-                            <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-                                <Search className="w-8 h-8 text-slate-400" />
-                            </div>
-                            <h3 className="text-xl font-bold text-slate-900 mb-2">No jobs found</h3>
-                            <p className="text-slate-500 max-w-md mx-auto mb-8">
-                                We couldn't find any positions matching your current filters. Try adjusting your search criteria or clear all filters to see everything.
-                            </p>
-                            <Button
-                                onClick={handleClearFilters}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 rounded-xl px-8 h-12 font-medium"
-                            >
-                                Clear all filters
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="space-y-8">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                                    <Briefcase className="w-5 h-5 text-indigo-500" />
-                                    Latest Opportunities <span className="text-slate-400 font-normal text-sm ml-2">({jobs.length} jobs)</span>
-                                </h2>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {jobs.map((job) => (
-                                    <div
-                                        key={job.id}
-                                        className="group relative bg-white border border-slate-200 hover:border-indigo-500/30 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/10 flex flex-col h-full"
+                                    <Button
+                                        onClick={handleSearch}
+                                        size="sm"
+                                        className="h-10 px-6 bg-blue-600 hover:bg-blue-700"
+                                        disabled={loading}
                                     >
-                                        <div className="flex items-start justify-between mb-5">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-50 to-slate-50 border border-slate-100 flex items-center justify-center text-indigo-600 font-bold text-xl shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                                                    {job.company_logo ? (
-                                                        <img src={job.company_logo} alt={job.company_name} className="w-full h-full object-cover rounded-xl" />
-                                                    ) : (
-                                                        job.company_name.charAt(0).toUpperCase()
-                                                    )}
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-bold text-slate-900 text-lg line-clamp-1 group-hover:text-indigo-600 transition-colors">
-                                                        {job.job_title}
-                                                    </h3>
-                                                    <div className="flex items-center gap-1.5 text-sm text-slate-500 font-medium">
-                                                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="line-clamp-1">{job.company_name}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {job.posted_date && (
-                                                <Badge variant="secondary" className="bg-slate-100 text-slate-500 font-medium hover:bg-slate-200 border-0">
-                                                    {formatDistanceToNow(new Date(job.posted_date), { addSuffix: true }).replace("about ", "")}
-                                                </Badge>
-                                            )}
-                                        </div>
+                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                    </Button>
+                                </div>
 
-                                        <div className="flex flex-wrap gap-2 mb-6">
-                                            {job.job_type && (
-                                                <Badge variant="outline" className="rounded-lg border-blue-200 bg-blue-50/50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-colors px-2.5 py-1">
-                                                    {job.job_type}
-                                                </Badge>
-                                            )}
-                                            {job.location && (
-                                                <Badge variant="outline" className="rounded-lg border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 transition-colors px-2.5 py-1">
-                                                    <MapPin className="w-3 h-3 mr-1.5 inline-block" />
-                                                    {job.location}
-                                                </Badge>
-                                            )}
-                                            {job.salary_range && (
-                                                <Badge variant="outline" className="rounded-lg border-amber-200 bg-amber-50/50 text-amber-700 hover:bg-amber-100 hover:border-amber-300 transition-colors px-2.5 py-1">
-                                                    <DollarSign className="w-3 h-3 mr-1 inline-block" />
-                                                    {job.salary_range}
-                                                </Badge>
-                                            )}
-                                        </div>
+                                <div className="flex gap-3">
+                                    <Select value={location} onValueChange={setLocation}>
+                                        <SelectTrigger className="h-9 text-sm border-slate-200">
+                                            <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="All Locations">All Locations</SelectItem>
+                                            <SelectItem value="Remote">Remote</SelectItem>
+                                            <SelectItem value="New York">New York</SelectItem>
+                                            <SelectItem value="San Francisco">San Francisco</SelectItem>
+                                            <SelectItem value="London">London</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={type} onValueChange={setType}>
+                                        <SelectTrigger className="h-9 text-sm border-slate-200">
+                                            <Briefcase className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="All Types">All Types</SelectItem>
+                                            <SelectItem value="Full-time">Full-time</SelectItem>
+                                            <SelectItem value="Part-time">Part-time</SelectItem>
+                                            <SelectItem value="Contract">Contract</SelectItem>
+                                            <SelectItem value="Internship">Internship</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-                                        <div className="flex-1 mb-6">
-                                            <p className="text-sm text-slate-500 line-clamp-3 leading-relaxed">
-                                                {job.description || "No description provided for this position."}
-                                            </p>
-                                        </div>
-
-                                        <div className="mt-auto pt-5 border-t border-slate-100 flex items-center gap-3">
-                                            <Button
-                                                onClick={() => handleApplyClick(job)}
-                                                className="flex-1 bg-slate-900 hover:bg-indigo-600 text-white shadow-lg shadow-slate-200 hover:shadow-indigo-200 rounded-xl h-11 font-medium transition-all group-hover:translate-y-[-2px]"
-                                            >
-                                                Apply Now
-                                            </Button>
-                                            <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl border-slate-200 text-slate-400 hover:text-amber-500 hover:border-amber-200 hover:bg-amber-50 transition-colors">
-                                                <Sparkles className="w-5 h-5" />
-                                            </Button>
-                                        </div>
-                                    </div>
+                    {/* Job Feed */}
+                    <div>
+                        {loading ? (
+                            <div className="space-y-3">
+                                {[...Array(5)].map((_, i) => (
+                                    <div key={i} className="h-56 bg-white border border-slate-200 rounded-xl animate-pulse" />
                                 ))}
                             </div>
+                        ) : jobs.length === 0 ? (
+                            <Card className="border-0 shadow-lg bg-white">
+                                <CardContent className="p-16 text-center">
+                                    <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                                    <h3 className="text-lg font-semibold text-slate-900 mb-1">No jobs found</h3>
+                                    <p className="text-sm text-slate-500 mb-4">Try different search criteria</p>
+                                    <Button
+                                        onClick={() => {
+                                            setSearch("")
+                                            setLocation("All Locations")
+                                            setType("All Types")
+                                            fetchJobs()
+                                        }}
+                                        size="sm"
+                                        variant="outline"
+                                    >
+                                        Clear Filters
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="space-y-3">
+                                {jobs.map((job) => (
+                                    <CompactJobCard
+                                        key={job.id}
+                                        job={job}
+                                        onApply={handleApplyClick}
+                                        isSaved={savedJobs.has(job.id)}
+                                        onToggleSave={toggleSaveJob}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div> {/* Closes max-w-4xl mx-auto space-y-6 */}
+            </div> {/* Closes min-h-screen bg-gradient-to-br ... */}
+
+            <ApplicationDialog
+                job={selectedJob || { id: '', company_name: '', job_title: '', location: '', job_type: '' }}
+                open={isDialogOpen}
+                onOpenChange={(open) => {
+                    setIsDialogOpen(open)
+                    if (!open) setSelectedJob(null)
+                }}
+                onConfirm={handleConfirmApply}
+            />
+        </CandidateLayout>
+    )
+}
+
+function CompactJobCard({ job, onApply, isSaved, onToggleSave }: {
+    job: Job;
+    onApply: (job: Job) => void;
+    isSaved: boolean;
+    onToggleSave: (jobId: string, e?: React.MouseEvent) => void;
+}) {
+    return (
+        <Card className="border-0 shadow-md hover:shadow-lg transition-all duration-200 bg-white overflow-hidden group">
+            {/* Compact Header */}
+            <CardHeader className="pb-3 pt-4 px-5">
+                <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                        {/* Company Logo */}
+                        <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0 shadow-sm">
+                            {job.company_name?.charAt(0) || 'C'}
                         </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <h3 className="font-semibold text-slate-900 text-sm truncate">
+                                    {job.company_name}
+                                </h3>
+                                {job.is_featured && (
+                                    <Badge className="bg-blue-600 text-white border-0 text-xs px-1.5 py-0">
+                                        <Sparkles className="w-2.5 h-2.5" />
+                                    </Badge>
+                                )}
+                            </div>
+                            <p className="text-xs text-slate-500">
+                                {job.created_at ? (() => {
+                                    const date = new Date(job.created_at)
+                                    const now = new Date()
+                                    const diffDays = Math.ceil(Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+                                    if (diffDays === 0) return 'Today'
+                                    if (diffDays === 1) return '1d'
+                                    if (diffDays < 7) return `${diffDays}d`
+                                    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`
+                                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                })() : 'Recent'} • {job.applicants_count || 0} applicants
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={(e) => onToggleSave(job.id, e)}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors flex-shrink-0"
+                    >
+                        {isSaved ? (
+                            <BookmarkCheck className="w-5 h-5 text-blue-600 fill-blue-600" />
+                        ) : (
+                            <Bookmark className="w-5 h-5 text-slate-400" />
+                        )}
+                    </button>
+                </div>
+            </CardHeader>
+
+            {/* Compact Content */}
+            <CardContent className="pt-0 pb-4 px-5">
+                {/* Job Title */}
+                <h2 className="text-lg font-bold text-slate-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-1">
+                    {job.job_title}
+                </h2>
+
+                {/* Compact Info Pills */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-medium">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {job.location}
+                    </Badge>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-xs font-medium">
+                        <Briefcase className="w-3 h-3 mr-1" />
+                        {job.job_type}
+                    </Badge>
+                    {job.salary_range && (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-medium">
+                            <DollarSign className="w-3 h-3 mr-1" />
+                            {job.salary_range}
+                        </Badge>
+                    )}
+                    {job.experience_level && (
+                        <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-xs font-medium">
+                            {job.experience_level}
+                        </Badge>
                     )}
                 </div>
 
-                <ApplicationDialog
-                    job={selectedJob}
-                    isOpen={isDialogOpen}
-                    onClose={() => setIsDialogOpen(false)}
-                    onConfirm={handleConfirmApply}
-                />
-            </div>
-        </CandidateLayout>
+                {/* Description */}
+                {job.description && (
+                    <p className="text-sm text-slate-600 line-clamp-2 mb-3 leading-relaxed">
+                        {job.description}
+                    </p>
+                )}
+
+                {/* Skills */}
+                {job.required_skills && job.required_skills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {job.required_skills.slice(0, 5).map((skill, index) => (
+                            <span
+                                key={index}
+                                className="text-xs px-2 py-0.5 bg-slate-100 text-slate-700 rounded font-medium"
+                            >
+                                {skill}
+                            </span>
+                        ))}
+                        {job.required_skills.length > 5 && (
+                            <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
+                                +{job.required_skills.length - 5}
+                            </span>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+
+            {/* Compact Footer */}
+            <CardFooter className="border-t border-slate-100 pt-3 pb-3 px-5 flex items-center justify-between">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-600 hover:text-slate-900 h-8 px-3"
+                >
+                    <Share2 className="w-3.5 h-3.5 mr-1.5" />
+                    Share
+                </Button>
+                <Button
+                    onClick={() => onApply(job)}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-5 font-semibold"
+                >
+                    Apply Now
+                    <ArrowUpRight className="w-3.5 h-3.5 ml-1.5" />
+                </Button>
+            </CardFooter>
+        </Card>
     )
 }

@@ -151,3 +151,59 @@ class ResumeService:
         }
         supabase.table("resume").update(update_data).eq("id", user.id).execute()
         return {"message": "Resume deleted successfully"}
+    
+    @staticmethod
+    def calculate_resume_completion(resume_data: dict) -> int:
+        """
+        Calculate resume completion percentage.
+        Returns 0-100 score based on required fields.
+        """
+        score = 0
+        
+        # Personal Info (30 points)
+        personal_info = resume_data.get('personal_info_json', {})
+        required_fields = ['fullName', 'email', 'phone', 'location']
+        if all(personal_info.get(field) for field in required_fields):
+            score += 30
+        
+        # Education (25 points)
+        education = resume_data.get('education_json', [])
+        if len(education) >= 1:
+            score += 25
+        
+        # Experience (25 points)
+        experience = resume_data.get('experience_json', [])
+        if len(experience) >= 1:
+            score += 25
+        
+        # Skills (20 points)
+        skills = resume_data.get('skills_json', [])
+        if len(skills) >= 3:
+            score += 20
+        
+        return score
+    
+    @staticmethod
+    def update_profile_completion(user_id: str):
+        """
+        Update profile.resume_completed based on resume data.
+        Called after resume save to update completion status.
+        """
+        # Get resume data
+        result = supabase.table("resume").select("*").eq("id", user_id).execute()
+        resume = result.data[0] if result.data else None
+        
+        if not resume:
+            # No resume yet, mark as incomplete
+            supabase.table("profiles").update({
+                "resume_completed": False
+            }).eq("id", user_id).execute()
+            return
+        
+        # Calculate completion
+        completion = ResumeService.calculate_resume_completion(resume)
+        
+        # Update profile
+        supabase.table("profiles").update({
+            "resume_completed": completion >= 80  # 80% threshold
+        }).eq("id", user_id).execute()

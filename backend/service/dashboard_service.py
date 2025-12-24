@@ -42,6 +42,65 @@ class DashboardService:
             return "Recently"
     
     @staticmethod
+    def _calculate_trends(user_id: str, current_profile_score: int) -> dict:
+        """
+        Calculate trends by comparing current period (last 30 days) with previous period (30-60 days ago)
+        Returns percentage changes for applications, interviews, profile views, and profile score
+        """
+        now = datetime.now()
+        
+        # Define time periods
+        current_period_start = (now - timedelta(days=30)).date().isoformat()
+        previous_period_start = (now - timedelta(days=60)).date().isoformat()
+        previous_period_end = current_period_start
+        
+        # Calculate applications trend
+        current_apps = supabase.table("applications").select("id", count="exact").eq("user_id", user_id).gte("applied_date", current_period_start).execute()
+        current_apps_count = current_apps.count if hasattr(current_apps, 'count') else len(current_apps.data or [])
+        
+        previous_apps = supabase.table("applications").select("id", count="exact").eq("user_id", user_id).gte("applied_date", previous_period_start).lt("applied_date", previous_period_end).execute()
+        previous_apps_count = previous_apps.count if hasattr(previous_apps, 'count') else len(previous_apps.data or [])
+        
+        applications_trend = ((current_apps_count - previous_apps_count) / previous_apps_count * 100) if previous_apps_count > 0 else (100.0 if current_apps_count > 0 else 0.0)
+        
+        # Calculate interviews trend
+        current_interviews = supabase.table("interviews").select("id", count="exact").eq("candidate_id", user_id).gte("scheduled_at", current_period_start).execute()
+        current_interviews_count = current_interviews.count if hasattr(current_interviews, 'count') else len(current_interviews.data or [])
+        
+        previous_interviews = supabase.table("interviews").select("id", count="exact").eq("candidate_id", user_id).gte("scheduled_at", previous_period_start).lt("scheduled_at", previous_period_end).execute()
+        previous_interviews_count = previous_interviews.count if hasattr(previous_interviews, 'count') else len(previous_interviews.data or [])
+        
+        interviews_trend = ((current_interviews_count - previous_interviews_count) / previous_interviews_count * 100) if previous_interviews_count > 0 else (100.0 if current_interviews_count > 0 else 0.0)
+        
+        # Calculate profile views trend
+        current_views = supabase.table("profile_views").select("id", count="exact").eq("user_id", user_id).gte("viewed_date", current_period_start).execute()
+        current_views_count = current_views.count if hasattr(current_views, 'count') else len(current_views.data or [])
+        
+        previous_views = supabase.table("profile_views").select("id", count="exact").eq("user_id", user_id).gte("viewed_date", previous_period_start).lt("viewed_date", previous_period_end).execute()
+        previous_views_count = previous_views.count if hasattr(previous_views, 'count') else len(previous_views.data or [])
+        
+        profile_views_trend = ((current_views_count - previous_views_count) / previous_views_count * 100) if previous_views_count > 0 else (100.0 if current_views_count > 0 else 0.0)
+        
+        # Calculate profile score trend
+        # Get previous profile score from candidate_profile_strength table
+        strength_history = supabase.table("candidate_profile_strength").select("overall_score, last_calculated").eq("user_id", user_id).order("last_calculated", desc=True).limit(2).execute()
+        
+        profile_score_trend = 0.0
+        if strength_history.data and len(strength_history.data) >= 2:
+            previous_score = strength_history.data[1].get("overall_score", 0)
+            profile_score_trend = ((current_profile_score - previous_score) / previous_score * 100) if previous_score > 0 else (100.0 if current_profile_score > 0 else 0.0)
+        elif current_profile_score > 0:
+            profile_score_trend = 100.0  # First time having a score
+        
+        return {
+            "applicationsTrend": round(applications_trend, 1),
+            "profileViewsTrend": round(profile_views_trend, 1),
+            "interviewsTrend": round(interviews_trend, 1),
+            "profileScoreTrend": round(profile_score_trend, 1)
+        }
+
+    
+    @staticmethod
     def get_profile_by_user_id(user_id: str):
         """Get profile record by user_id (using id column)"""
         result = supabase.table("profiles").select("*").eq("id", user_id).execute()
@@ -155,8 +214,8 @@ class DashboardService:
         applications_count = apps_result.count if hasattr(apps_result, 'count') else len(apps_result.data) if apps_result.data else 0
         
         # Count upcoming interviews
-        today = date.today().isoformat()
-        interviews_result = supabase.table("interviews").select("id", count="exact").eq("user_id", user_id).gte("scheduled_date", today).execute()
+        now = datetime.now().isoformat()
+        interviews_result = supabase.table("interviews").select("id", count="exact").eq("candidate_id", user_id).gte("scheduled_at", now).execute()
         interviews_count = interviews_result.count if hasattr(interviews_result, 'count') else len(interviews_result.data) if interviews_result.data else 0
         
         # Count profile views (last 30 days)
@@ -164,11 +223,16 @@ class DashboardService:
         views_result = supabase.table("profile_views").select("id", count="exact").eq("user_id", user_id).gte("viewed_date", thirty_days_ago).execute()
         views_count = views_result.count if hasattr(views_result, 'count') else len(views_result.data) if views_result.data else 0
         
+        
+        # Calculate trends
+        trends = DashboardService._calculate_trends(user_id, overall_score)
+        
         stats = DashboardStatsSchema(
             applicationsSubmitted=applications_count,
             interviewsScheduled=interviews_count,
             profileViews=views_count,
-            profileScore=overall_score
+            profileScore=overall_score,
+            **trends  # Unpack trend data
         )
         
         # Fetch recent applications (last 10)
@@ -200,14 +264,14 @@ class DashboardService:
         ]
         
         # Fetch upcoming interviews
-        interviews_data = supabase.table("interviews").select("*").eq("user_id", user_id).gte("scheduled_date", today).order("scheduled_date").order("scheduled_time").execute()
+        interviews_data = supabase.table("interviews").select("*").eq("candidate_id", user_id).gte("scheduled_at", now).order("scheduled_at").execute()
         interviews = [
             InterviewSchema(
                 id=str(interview["id"]),
                 position=interview["job_title"],
                 company=interview["company_name"],
-                date=interview["scheduled_date"],
-                time=interview["scheduled_time"],
+                date=interview["scheduled_at"].split("T")[0] if "T" in interview.get("scheduled_at", "") else interview.get("scheduled_at", ""),
+                time=interview["scheduled_at"].split("T")[1].split(".")[0] if "T" in interview.get("scheduled_at", "") else "",
                 type=interview["interview_type"],
                 meetingLink=interview.get("location") if interview.get("interview_type") in ['video', 'online'] else None
             )
@@ -295,3 +359,69 @@ class DashboardService:
             supabase.table("candidate_profile_strength").insert(strength_record).execute()
         
         return {"message": "Profile strength updated successfully", "overall_score": strength_calc["overall_score"]}
+
+    @staticmethod
+    def get_company_dashboard_data(user) -> dict:
+        """
+        Get dashboard data for a company/recruiter
+        """
+        user_id = user.id
+        
+        # 1. Stats - Total Jobs
+        jobs_result = supabase.table("jobs").select("id", count="exact").eq("user_id", user_id).execute()
+        total_jobs = jobs_result.count if hasattr(jobs_result, 'count') else len(jobs_result.data or [])
+
+        # Get job IDs for further filtering
+        jobs_data = supabase.table("jobs").select("id").eq("user_id", user_id).execute()
+        job_ids = [j['id'] for j in (jobs_data.data or [])]
+        
+        total_applications = 0
+        shortlisted = 0
+        recent_applications = []
+        
+        if job_ids:
+            # Total Applications for these jobs
+            apps_result = supabase.table("applications").select("id", count="exact").in_("job_id", job_ids).execute()
+            total_applications = apps_result.count if hasattr(apps_result, 'count') else len(apps_result.data or [])
+            
+            # Shortlisted
+            shortlisted_result = supabase.table("applications").select("id", count="exact").in_("job_id", job_ids).eq("status", "shortlisted").execute()
+            shortlisted = shortlisted_result.count if hasattr(shortlisted_result, 'count') else len(shortlisted_result.data or [])
+            
+            # Recent Applications
+            # Fetch applications with candidate details via user_id relationship to profiles
+            # Note: referencing profiles via user_id foreign key
+            rec_apps_data = supabase.table("applications")\
+                .select("*, profiles!user_id(full_name, email, avatar_url, experience, skills)")\
+                .in_("job_id", job_ids)\
+                .order("applied_date", desc=True)\
+                .limit(10)\
+                .execute()
+            
+            raw_apps = rec_apps_data.data or []
+            
+            # Process applications to flatten structure for frontend
+            for app in raw_apps:
+                candidate_profile = app.get("profiles") or {}
+                recent_applications.append({
+                    "id": app["id"],
+                    "job_title": app["job_title"],
+                    "status": app["status"],
+                    "applied_date": app["applied_date"],
+                    "candidate": {
+                        "name": candidate_profile.get("full_name", "Unknown"),
+                        "email": candidate_profile.get("email", ""),
+                        "avatar": candidate_profile.get("avatar_url"),
+                        "experience": candidate_profile.get("experience"),
+                        "skills": candidate_profile.get("skills")
+                    }
+                })
+        
+        return {
+            "stats": {
+                "total_jobs": total_jobs,
+                "total_applications": total_applications,
+                "shortlisted": shortlisted,
+            },
+            "recent_applications": recent_applications
+        }

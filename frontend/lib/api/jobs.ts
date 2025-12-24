@@ -1,101 +1,63 @@
 import { JobEndpoints } from "./endpoints";
 
 export interface Job {
-    id: string
-    company_name: string
-    company_logo?: string
-    job_title: string
-    location?: string
-    salary_range?: string
-    job_type?: string
-    experience_level?: string
-    skills_required?: string[]
-    description?: string
-    posted_date?: string
-    is_active: boolean
+    id: string;
+    company_name: string;
+    job_title: string;
+    location: string;
+    job_type: string;
+    salary_range?: string;
+    description?: string;
+    requirements?: string[];
+    required_skills?: string[];
+    posted_date?: string;
+    created_at?: string;
+    logo_url?: string;
+    is_featured?: boolean;
+    experience_level?: string;
+    applicants_count?: number;
 }
 
-interface GetJobsParams {
-    page?: number
-    pageSize?: number
-    search?: string
-    location?: string
-    jobType?: string
-}
+export const getJobs = async (token: string, search?: string, location?: string, type?: string) => {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (location && location !== "All Locations") params.append("location", location);
+    if (type && type !== "All Types") params.append("job_type", type);
 
-interface JobsResponse {
-    items: Job[]
-    meta: {
-        total: number
-        page: number
-        pageSize: number
-        totalPages: number
-    }
-}
-
-export async function getJobs(token: string, params: GetJobsParams = {}): Promise<Job[]> {
-    const query = new URLSearchParams()
-    if (params.search) query.append("search", params.search)
-    if (params.location) query.append("location", params.location)
-    if (params.jobType) query.append("job_type", params.jobType)
-    if (params.page) query.append("skip", ((params.page - 1) * (params.pageSize || 10)).toString())
-    if (params.pageSize) query.append("limit", params.pageSize.toString())
-
-    const response = await fetch(`${JobEndpoints.LIST}?${query.toString()}`, {
+    const res = await fetch(`${JobEndpoints.LIST}?${params.toString()}`, {
         headers: {
             Authorization: `Bearer ${token}`,
         },
-    })
+    });
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch jobs")
-    }
+    if (!res.ok) throw new Error("Failed to fetch jobs");
+    return res.json();
+};
 
-    return response.json()
-}
-
-export async function getJobDetail(token: string, id: string): Promise<Job> {
-    const response = await fetch(JobEndpoints.DETAIL(id), {
+export const getJobDetails = async (token: string, id: string) => {
+    const res = await fetch(JobEndpoints.DETAIL(id), {
         headers: {
             Authorization: `Bearer ${token}`,
         },
-    })
+    });
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch job details")
-    }
-
-    return response.json()
+    if (!res.ok) throw new Error("Failed to fetch job details");
+    return res.json();
 }
 
-export async function getJobById(token: string, id: string): Promise<Job | null> {
-    try {
-        const response = await fetch(JobEndpoints.DETAIL(id), {
-            headers: {
-                Authorization: `Bearer ${token}`
-            }
-        })
-        if (!response.ok) return null
-        return await response.json()
-    } catch (error) {
-        return null
-    }
-}
-
-export async function applyToJob(token: string, jobId: string, notes?: string): Promise<boolean> {
-    const response = await fetch(`${JobEndpoints.DETAIL(jobId)}/apply`, {
+export const applyToJob = async (token: string, jobId: string, note?: string) => {
+    const res = await fetch(JobEndpoints.APPLY(jobId), {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ notes })
-    })
+        body: JSON.stringify({ note }),
+    });
 
-    if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.detail || "Failed to apply")
+    if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || "Failed to submit application");
     }
-
-    return true
-}
+    return res.json();
+};

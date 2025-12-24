@@ -50,23 +50,43 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // ✅ Unauthenticated → force to /auth/candidate
+  // ✅ Unauthenticated → redirect to role-specific auth page if role cookie exists
   if (!accessToken && !pathname.startsWith("/auth")) {
-    console.log("No access token, redirecting to /auth/candidate")
-    return NextResponse.redirect(new URL("/auth/candidate", request.url))
+    // Check if we have a role cookie from previous session
+    const userRole = request.cookies.get("user_role")?.value
+    let authRedirect = "/auth/candidate" // Default fallback
+
+    if (userRole === "recruiter") {
+      authRedirect = "/auth/company"
+    } else if (userRole === "interviewer") {
+      authRedirect = "/auth/interviewer"
+    }
+
+    console.log(`No access token, redirecting to ${authRedirect}`)
+    return NextResponse.redirect(new URL(authRedirect, request.url))
   }
 
   // ✅ Authenticated → redirect away from /auth/*
   if (accessToken && pathname.startsWith("/auth")) {
     const role = await fetchUserRole(accessToken)
     if (!role) {
-      console.log("Failed to fetch valid user role, redirecting to /auth/candidate")
-      return NextResponse.redirect(new URL("/auth/candidate", request.url))
+      // Check if we have a role cookie as fallback
+      const userRole = request.cookies.get("user_role")?.value
+      let authRedirect = "/auth/candidate" // Default fallback
+
+      if (userRole === "recruiter") {
+        authRedirect = "/auth/company"
+      } else if (userRole === "interviewer") {
+        authRedirect = "/auth/interviewer"
+      }
+
+      console.log(`Failed to fetch valid user role, redirecting to ${authRedirect}`)
+      return NextResponse.redirect(new URL(authRedirect, request.url))
     }
 
     // 🔹 Map role → new clean paths
-    const redirectPath = role === "recruiter" ? "/company" : 
-                        role === "interviewer" ? "/interviewer" : "/candidate"
+    const redirectPath = role === "recruiter" ? "/company" :
+      role === "interviewer" ? "/interviewer" : "/candidate"
     console.log("Authenticated user, redirecting to:", redirectPath)
 
     const response = NextResponse.redirect(new URL(redirectPath, request.url))
@@ -88,5 +108,12 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/auth/:path*", "/company", "/candidate", "/interviewer", "/oauth-callback"],
+  matcher: [
+    "/auth/:path*",
+    "/company",
+    "/candidate",
+    "/interviewer",
+    "/interviewer/:path*",
+    "/oauth-callback"
+  ],
 }

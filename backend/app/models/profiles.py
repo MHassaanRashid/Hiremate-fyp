@@ -26,3 +26,8 @@ class Profiles(Base):
     portfolio = Column(Text, nullable=True)
     linkedin = Column(Text, nullable=True)
     github = Column(Text, nullable=True)
+    
+    # Test and Interview fields
+    test_status = Column(String(50), default='not_started')
+    interview_eligible = Column(Boolean, default=False)
+    last_test_date = Column(DateTime(timezone=True))

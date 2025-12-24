@@ -1,6 +1,7 @@
-'use client';
+"use client"
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   User,
   Briefcase,
@@ -22,6 +23,13 @@ import {
   Sparkles,
   Bell,
   MessageSquare,
+  Search,
+  ArrowRight,
+  Target,
+  Rocket,
+  ArrowUpRight,
+  DollarSign,
+  Zap,
 } from 'lucide-react';
 import {
   CandidateProfile,
@@ -33,7 +41,11 @@ import {
   ActivityItem,
 } from '@/types/dashboard';
 import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
 
 interface CandidateDashboardProps {
   profile: CandidateProfile;
@@ -123,381 +135,429 @@ export default function CandidateDashboard({
   activity,
   isLoading = false,
 }: CandidateDashboardProps) {
-  const [selectedJob, setSelectedJob] = useState<string | null>(null);
   const router = useRouter();
 
   if (isLoading) {
     return <DashboardSkeleton />;
   }
 
-  // Get status badge color
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'applied': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
-      case 'viewed': return 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800';
-      case 'shortlisted': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800';
-      case 'interview': return 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800';
-      case 'rejected': return 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800';
-      case 'accepted': return 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800';
-      default: return 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-    }
+  const strengthItems = Object.values(profileStrength);
+  const completedItems = strengthItems.filter(Boolean).length;
+  const strengthPercentage = Math.round((completedItems / strengthItems.length) * 100);
+
+  // Helper function to format trend values
+  const formatTrend = (trend?: number): string => {
+    if (trend === undefined || trend === null) return '';
+    const sign = trend >= 0 ? '+' : '';
+    return `${sign}${trend.toFixed(1)}%`;
   };
 
-  // Get activity icon
-  const getActivityIcon = (type: ActivityItem['type']) => {
-    switch (type) {
-      case 'view':
-      case 'profile_viewed':
-        return Eye;
-      case 'status_change':
-      case 'application_viewed':
-      case 'application_shortlisted':
-        return AlertCircle;
-      case 'message':
-        return MessageSquare;
-      case 'recommendation':
-      case 'job_recommended':
-        return Sparkles;
-      case 'interview_scheduled':
-        return Calendar;
-      case 'application_submitted':
-        return FileText;
-      default:
-        return Bell;
+  const getStatusColor = (status: Application['status']) => {
+    switch (status) {
+      case 'pending': return 'bg-amber-100 text-amber-700 border-amber-200';
+      case 'reviewing': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'shortlisted': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'rejected': return 'bg-rose-100 text-rose-700 border-rose-200';
+      case 'accepted': return 'bg-teal-100 text-teal-700 border-teal-200';
+      default: return 'bg-slate-100 text-slate-700 border-slate-200';
     }
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
 
-      {/* Welcome Section with Pattern */}
-      <div className="relative overflow-hidden rounded-2xl bg-primary text-primary-foreground shadow-lg">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff1a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff1a_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-20" />
-        <div className="relative p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-4 max-w-xl">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">
-                Welcome back, {profile.name.split(' ')[0]}! 👋
-              </h1>
-              <p className="text-primary-foreground/90 text-lg font-medium leading-relaxed">
-                You've got <span className="underline decoration-wavy decoration-white/30 underline-offset-4">{stats.interviewsScheduled} interviews</span> coming up. Keep the momentum going!
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                onClick={() => router.push('/candidate/resume')}
-                className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all backdrop-blur-sm"
-              >
-                <FileText className="w-4 h-4" />
-                Update Resume
-              </button>
-              <button
-                onClick={() => router.push('/homepage')}
-                className="inline-flex items-center gap-2 bg-white text-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow-lg shadow-black/5 hover:bg-gray-50 transition-all transform hover:-translate-y-0.5"
-              >
-                <Sparkles className="w-4 h-4" />
-                Find Jobs
-              </button>
-            </div>
+        {/* Welcome Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
+              Welcome back, {profile.full_name?.split(' ')[0] || profile.name?.split(' ')[0] || 'there'}! 👋
+            </h1>
+            <p className="text-slate-600 text-lg">Here's what's happening with your job search today</p>
           </div>
-
-          {/* Profile Completion Circle */}
-          <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 w-full md:w-auto min-w-[280px]">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-semibold text-white/90">Profile Strength</span>
-              <span className="text-lg font-bold">{profile.profileCompletion}%</span>
-            </div>
-            <div className="w-full bg-black/20 rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-white h-full rounded-full transition-all duration-1000 ease-out"
-                style={{ width: `${profile.profileCompletion}%` }}
-              />
-            </div>
-            <p className="text-xs text-white/70 mt-3 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5" />
-              {profile.profileCompletion < 100 ? "Complete your profile to rank higher" : "Profile fully optimized!"}
-            </p>
-          </div>
+          <Button
+            onClick={() => router.push('/candidate/find-jobs')}
+            className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-xl shadow-lg shadow-blue-600/30 transition-all hover:shadow-xl hover:shadow-blue-600/40"
+          >
+            <Search className="w-4 h-4 mr-2" />
+            Find Jobs
+          </Button>
         </div>
       </div>
 
-      {/* Statistics Overview Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          icon={Briefcase}
-          label="Applications"
-          value={stats.applicationsSubmitted}
-          color="default"
-          trend="+12%"
-        />
-        <StatCard
-          icon={Calendar}
-          label="Interviews"
-          value={stats.interviewsScheduled}
-          color="warning"
-        />
-        <StatCard
-          icon={Eye}
-          label="Profile Views"
-          value={stats.profileViews}
-          color="info"
-          trend="+5%"
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Profile Score"
-          value={`${stats.profileScore}%`}
-          color="success"
-        />
-      </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StatCard
+            icon={Briefcase}
+            label="Applications"
+            value={stats.applicationsSubmitted}
+            trend={formatTrend(stats.applicationsTrend)}
+            trendUp={stats.applicationsTrend !== undefined ? stats.applicationsTrend >= 0 : true}
+            color="blue"
+          />
+          <StatCard
+            icon={Eye}
+            label="Profile Views"
+            value={stats.profileViews}
+            trend={formatTrend(stats.profileViewsTrend)}
+            trendUp={stats.profileViewsTrend !== undefined ? stats.profileViewsTrend >= 0 : true}
+            color="emerald"
+          />
+          <StatCard
+            icon={Calendar}
+            label="Interviews"
+            value={stats.interviewsScheduled}
+            trend={formatTrend(stats.interviewsTrend)}
+            trendUp={stats.interviewsTrend !== undefined ? stats.interviewsTrend >= 0 : true}
+            color="purple"
+          />
+          <StatCard
+            icon={Target}
+            label="Profile Score"
+            value={stats.profileScore}
+            trend={formatTrend(stats.profileScoreTrend)}
+            trendUp={stats.profileScoreTrend !== undefined ? stats.profileScoreTrend >= 0 : true}
+            color="amber"
+          />
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column (Main Content) */}
-        <div className="lg:col-span-2 space-y-8">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          {/* Recent Applications */}
-          <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold">Recent Applications</h2>
-                <p className="text-sm text-muted-foreground">Track your job applications</p>
-              </div>
-              <button
-                onClick={() => router.push('/candidate/applications')}
-                className="text-primary hover:text-primary/80 text-sm font-semibold flex items-center gap-1 transition-colors"
-              >
-                View All <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-muted/50 border-b border-border">
-                    <th className="text-left py-3 px-6 font-medium text-xs text-muted-foreground uppercase tracking-wider">Role</th>
-                    <th className="text-left py-3 px-6 font-medium text-xs text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Date</th>
-                    <th className="text-left py-3 px-6 font-medium text-xs text-muted-foreground uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {applications.slice(0, 5).map((app) => (
-                    <tr key={app.id} className="group hover:bg-muted/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-bold text-xs uppercase">
-                            {app.company.slice(0, 2)}
+          {/* Left Column - Applications & Profile */}
+          <div className="lg:col-span-2 space-y-8">
+
+            {/* Recent Applications */}
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="border-b border-slate-100 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-900">Recent Applications</CardTitle>
+                    <CardDescription className="mt-1">Track your latest job applications</CardDescription>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={() => router.push('/candidate/applications')}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    View All
+                    <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {applications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">No applications yet</p>
+                    <p className="text-slate-400 text-sm mt-1">Start applying to jobs to see them here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {applications.slice(0, 5).map((app) => (
+                      <div
+                        key={app.id}
+                        className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all cursor-pointer group"
+                        onClick={() => router.push(`/candidate/applications`)}
+                      >
+                        <div className="flex items-center gap-4 flex-1">
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                            {app.jobTitle.charAt(0)}
                           </div>
-                          <div>
-                            <p className="font-semibold text-sm text-foreground group-hover:text-primary transition-colors">{app.jobTitle}</p>
-                            <p className="text-xs text-muted-foreground">{app.company}</p>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                              {app.jobTitle}
+                            </h4>
+                            <p className="text-sm text-slate-500 flex items-center gap-2 mt-1">
+                              <Building className="w-3 h-3" />
+                              {app.company}
+                            </p>
                           </div>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap hidden sm:table-cell">
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(app.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-full text-xs font-semibold border",
-                          getStatusColor(app.status)
-                        )}>
-                          {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {applications.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="px-6 py-12 text-center text-muted-foreground">
-                        <p>No applications yet. Start exploring jobs!</p>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Recommended Jobs */}
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold">Recommended for You</h2>
-                <p className="text-sm text-muted-foreground">Jobs that match your profile</p>
-              </div>
-              <div className="flex gap-2">
-                {/* Navigation buttons for carousel could go here */}
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {recommendedJobs.slice(0, 4).map((job) => (
-                <div
-                  key={job.id}
-                  className={cn(
-                    'group bg-card hover:border-primary/50 text-card-foreground rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-all cursor-pointer relative overflow-hidden',
-                    selectedJob === job.id && 'ring-2 ring-primary border-primary'
-                  )}
-                  onClick={() => setSelectedJob(job.id)}
-                >
-                  <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ExternalLink className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                        <div className="flex items-center gap-3">
+                          <Badge className={cn("border", getStatusColor(app.status))}>
+                            {app.status}
+                          </Badge>
+                          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
+                        </div>
+                      </div>
+                    ))}
                   </div>
+                )}
+              </CardContent>
+            </Card>
 
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center">
-                      <Building className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                        {job.title}
-                      </h3>
-                      <p className="text-xs text-muted-foreground">{job.company}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-medium border border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900">
-                      <TrendingUp className="w-3 h-3 mr-1" />
-                      {job.matchPercentage}% Match
-                    </span>
-                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
-                      {job.type}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-2 pt-3 border-t border-border/50">
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      {job.location}
-                    </div>
-                    <span className="text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0 duration-200 flex items-center gap-1">
-                      Quick Apply <ChevronRight className="w-3 h-3" />
-                    </span>
+            {/* Recommended Jobs */}
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="border-b border-slate-100 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      Recommended for You
+                    </CardTitle>
+                    <CardDescription className="mt-1">Jobs matching your profile</CardDescription>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column (Sidebar Widgets) */}
-        <div className="space-y-8">
-
-          {/* Upcoming Interviews */}
-          <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6">
-            <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-primary" />
-              Upcoming Interviews
-            </h2>
-            <div className="space-y-4">
-              {interviews.length === 0 ? (
-                <div className="text-center py-8 px-4 bg-muted/30 rounded-lg border border-dashed border-border">
-                  <Calendar className="w-10 h-10 mx-auto mb-2 text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground">No interviews scheduled yet.</p>
-                  <button className="text-primary text-xs font-medium mt-1 hover:underline">Prepare for interviews</button>
-                </div>
-              ) : (
-                interviews.map((interview) => (
-                  <div key={interview.id} className="relative pl-4 border-l-2 border-primary/20 hover:border-primary transition-colors py-1">
-                    <div className="absolute -left-[5px] top-2.5 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-background" />
-                    <h3 className="font-semibold text-sm">{interview.position}</h3>
-                    <p className="text-xs text-muted-foreground mb-1">with {interview.company}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
-                      <span className="bg-muted px-1.5 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide">
-                        {new Date(interview.date).toLocaleDateString(undefined, { weekday: 'short' })}
-                      </span>
-                      <span>
-                        {new Date(interview.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} • {interview.time}
-                      </span>
-                    </div>
-                    {interview.type === 'online' && (
-                      <button className="mt-3 w-full bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold py-1.5 rounded transition-colors">
-                        Join Meeting
-                      </button>
-                    )}
+              </CardHeader>
+              <CardContent className="p-6">
+                {recommendedJobs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 font-medium">No recommendations yet</p>
+                    <p className="text-slate-400 text-sm mt-1">Complete your profile to get personalized job matches</p>
                   </div>
-                ))
-              )}
-            </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recommendedJobs.slice(0, 3).map((job) => (
+                      <div
+                        key={job.id}
+                        className="p-5 rounded-xl border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer group"
+                        onClick={() => router.push('/candidate/find-jobs')}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors mb-1">
+                              {job.title}
+                            </h4>
+                            <p className="text-sm text-slate-600 flex items-center gap-2">
+                              <Building className="w-3 h-3" />
+                              {job.company}
+                            </p>
+                          </div>
+                          <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                            {job.matchPercentage}% Match
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {job.location}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {job.type}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Profile Missing Items */}
-          <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <Award className="w-5 h-5 text-amber-500" />
-                Action Items
-              </h2>
-              <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full dark:bg-amber-900/30 dark:text-amber-400">
-                {100 - profile.profileCompletion > 0 ? 'Pending' : 'Done'}
-              </span>
-            </div>
+          {/* Right Column - Profile & Interviews */}
+          <div className="space-y-8">
 
-            <div className="space-y-3">
-              <ProfileItem label="Resume Uploaded" completed={profileStrength.resume} icon={FileText} />
-              <ProfileItem label="Skills Added" completed={profileStrength.skills} icon={Award} />
-              <ProfileItem label="Profile Photo" completed={profileStrength.photo} icon={User} />
-              <ProfileItem label="Work Experience" completed={profileStrength.experience} icon={Briefcase} />
-              <ProfileItem label="Education" completed={profileStrength.education} icon={Award} />
-            </div>
-
-            {100 - profile.profileCompletion > 0 && (
-              <div className="mt-4 pt-4 border-t border-border">
-                <button
+            {/* Profile Strength */}
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white overflow-hidden relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
+              <CardContent className="p-6 relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-white/90">Profile Strength</h3>
+                  <Target className="w-5 h-5 text-white/80" />
+                </div>
+                <div className="mb-4">
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className="text-4xl font-bold">{strengthPercentage}%</span>
+                    <span className="text-white/80 mb-1">Complete</span>
+                  </div>
+                  <Progress value={strengthPercentage} className="h-2 bg-white/20" />
+                </div>
+                <div className="space-y-2 mb-4">
+                  <ProfileStrengthItem completed={profileStrength.resume} label="Resume uploaded" />
+                  <ProfileStrengthItem completed={profileStrength.experience} label="Experience added" />
+                  <ProfileStrengthItem completed={profileStrength.education} label="Education added" />
+                  <ProfileStrengthItem completed={profileStrength.skills} label="Skills added" />
+                </div>
+                <Button
                   onClick={() => router.push('/candidate/profile')}
-                  className="w-full bg-primary text-primary-foreground py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all shadow-sm"
+                  className="w-full bg-white text-blue-600 hover:bg-blue-50 font-semibold"
                 >
                   Complete Profile
-                </button>
-              </div>
-            )}
-          </div>
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
 
-          {/* Recent Activity Mini-Feed */}
-          <div className="bg-card text-card-foreground rounded-xl border border-border shadow-sm p-6">
-            <h2 className="text-lg font-bold mb-4">Recent Activity</h2>
-            <div className="space-y-4">
-              {activity.slice(0, 4).map((item, idx) => {
-                const Icon = getActivityIcon(item.type);
-                return (
-                  <div key={item.id || idx} className="flex gap-3 items-start">
-                    <div className="p-1.5 rounded-full bg-muted mt-0.5">
-                      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium leading-tight">{item.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{item.timestamp}</p>
-                    </div>
+            {/* Upcoming Interviews */}
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="border-b border-slate-100 pb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg font-bold text-slate-900">Upcoming Interviews</CardTitle>
+                    <CardDescription className="mt-1 text-sm">Your scheduled meetings</CardDescription>
                   </div>
-                )
-              })}
-            </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => router.push('/candidate/interviews')}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                  >
+                    View All
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {interviews.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Calendar className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500 text-sm font-medium">No interviews scheduled</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {interviews.slice(0, 3).map((interview) => (
+                      <div
+                        key={interview.id}
+                        className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all cursor-pointer"
+                        onClick={() => router.push('/candidate/interviews')}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-semibold text-slate-900 text-sm">{interview.position}</h4>
+                          <Video className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <p className="text-xs text-slate-600 mb-2">{interview.company}</p>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                          <Calendar className="w-3 h-3" />
+                          {new Date(interview.date).toLocaleDateString()}
+                          <Clock className="w-3 h-3 ml-2" />
+                          {interview.time}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card className="border-0 shadow-lg bg-white">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-lg font-bold text-slate-900">Quick Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 pt-0">
+                <div className="space-y-2">
+                  <QuickActionButton
+                    icon={Upload}
+                    label="Upload Resume"
+                    onClick={() => router.push('/candidate/resume')}
+                  />
+                  <QuickActionButton
+                    icon={Search}
+                    label="Browse Jobs"
+                    onClick={() => router.push('/candidate/find-jobs')}
+                  />
+                  <QuickActionButton
+                    icon={User}
+                    label="Edit Profile"
+                    onClick={() => router.push('/candidate/profile')}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
+// Helper Components
+function StatCard({ icon: Icon, label, value, trend, trendUp, color }: {
+  icon: any;
+  label: string;
+  value: number;
+  trend: string;
+  trendUp: boolean;
+  color: 'blue' | 'emerald' | 'purple' | 'amber';
+}) {
+  const colorClasses = {
+    blue: 'from-blue-500 to-blue-600',
+    emerald: 'from-emerald-500 to-emerald-600',
+    purple: 'from-purple-500 to-purple-600',
+    amber: 'from-amber-500 to-amber-600',
+  };
+
+  return (
+    <Card className="border-0 shadow-lg bg-white overflow-hidden group hover:shadow-xl transition-all">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className={cn(
+            "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110",
+            colorClasses[color]
+          )}>
+            <Icon className="w-6 h-6" />
+          </div>
+          {trend && (
+            <Badge className={cn(
+              "border-0",
+              trendUp ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+            )}>
+              {trend}
+            </Badge>
+          )}
         </div>
-      </div>
+        <div>
+          <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>
+          <p className="text-sm text-slate-600 font-medium">{label}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ProfileStrengthItem({ completed, label }: { completed: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      {completed ? (
+        <CheckCircle2 className="w-4 h-4 text-white" />
+      ) : (
+        <div className="w-4 h-4 rounded-full border-2 border-white/40" />
+      )}
+      <span className={cn(
+        "text-sm",
+        completed ? "text-white" : "text-white/60"
+      )}>
+        {label}
+      </span>
     </div>
   );
 }
 
-// Loading Skeleton
+function QuickActionButton({ icon: Icon, label, onClick }: {
+  icon: any;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-all group text-left"
+    >
+      <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
+        <Icon className="w-5 h-5" />
+      </div>
+      <span className="font-medium text-slate-700 group-hover:text-slate-900">{label}</span>
+      <ChevronRight className="w-4 h-4 text-slate-400 ml-auto group-hover:text-blue-600 transition-colors" />
+    </button>
+  );
+}
+
 function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-muted/30 p-4 md:p-6 lg:p-8 animate-in fade-in">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="bg-muted rounded-xl h-48 animate-pulse" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="h-20 bg-slate-200 rounded-xl animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-muted rounded-xl h-32 animate-pulse" />
+            <div key={i} className="h-32 bg-slate-200 rounded-xl animate-pulse" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <div className="bg-muted rounded-xl h-96 animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="h-96 bg-slate-200 rounded-xl animate-pulse" />
+            <div className="h-96 bg-slate-200 rounded-xl animate-pulse" />
           </div>
-          <div>
-            <div className="bg-muted rounded-xl h-96 animate-pulse" />
+          <div className="space-y-8">
+            <div className="h-64 bg-slate-200 rounded-xl animate-pulse" />
+            <div className="h-64 bg-slate-200 rounded-xl animate-pulse" />
           </div>
         </div>
       </div>

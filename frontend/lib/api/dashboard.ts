@@ -9,6 +9,7 @@ import { handleResponse } from '../api';
 
 export interface CandidateProfile {
   name: string;
+  full_name?: string;
   profileCompletion: number;
   avatar?: string;
 }
@@ -18,6 +19,11 @@ export interface DashboardStats {
   interviewsScheduled: number;
   profileViews: number;
   profileScore: number;
+  // Trend fields (percentage change from previous period)
+  applicationsTrend?: number;
+  profileViewsTrend?: number;
+  interviewsTrend?: number;
+  profileScoreTrend?: number;
 }
 
 export interface Application {

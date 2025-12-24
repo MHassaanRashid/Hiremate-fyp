@@ -6,8 +6,6 @@ import { supabase } from "@/lib/supabaseClient"
 import toast from "react-hot-toast"
 import { Loader2 } from "lucide-react"
 
-export const dynamic = "force-dynamic";
-
 function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -18,8 +16,8 @@ function AuthCallbackContent() {
         const hash = window.location.hash
         const role = searchParams.get("role") || "candidate"
 
-        console.log("🔹 Auth Callback - Hash:", hash)
-        console.log("🔹 Auth Callback - Role:", role)
+        // console.log("🔹 Auth Callback - Hash:", hash)
+        // console.log("🔹 Auth Callback - Role:", role)
 
         // Get current session after redirect
         const { data, error } = await supabase.auth.getSession()
@@ -33,7 +31,7 @@ function AuthCallbackContent() {
 
         if (data.session) {
           const user = data.session.user
-          console.log("✓ User authenticated:", user.id)
+          // console.log("✓ User authenticated:", user.id)
 
           // Verify email confirmed
           if (user.email_confirmed_at) {
@@ -50,7 +48,7 @@ function AuthCallbackContent() {
             // Redirect to dashboard
             setTimeout(() => {
               router.replace(`/${dashboardRole}`)
-            }, 1500)
+            }, 1000)
           } else {
             // Email not yet verified, but they clicked the link
             toast.success("Email verified! You can now log in.")
@@ -86,8 +84,8 @@ function AuthCallbackContent() {
 export default function AuthCallback() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-muted/30">
-        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-600 to-blue-800">
+        <div className="w-16 h-16 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto"></div>
       </div>
     }>
       <AuthCallbackContent />

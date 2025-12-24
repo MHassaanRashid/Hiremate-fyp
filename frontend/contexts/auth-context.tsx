@@ -33,14 +33,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Function to clear session and redirect to login
   const clearSessionAndRedirect = useCallback((redirectTo?: string) => {
+    // Determine role-specific redirect before clearing localStorage
+    let roleBasedRedirect = "/auth/candidate" // Default fallback
+
+    if (!redirectTo) {
+      try {
+        const storedUser = localStorage.getItem("user")
+        if (storedUser) {
+          const userData = JSON.parse(storedUser)
+          const userRole = userData.role
+
+          // Map role to appropriate auth page
+          if (userRole === "recruiter") {
+            roleBasedRedirect = "/auth/company"
+          } else if (userRole === "interviewer") {
+            roleBasedRedirect = "/auth/interviewer"
+          } else {
+            roleBasedRedirect = "/auth/candidate"
+          }
+        }
+      } catch (error) {
+        console.log("Could not determine user role, using default redirect")
+      }
+    }
+
+    // Clear session data
     localStorage.removeItem("user")
     localStorage.removeItem("access_token")
     document.cookie = "access_token=; path=/; max-age=0; SameSite=Strict"
     document.cookie = "refresh_token=; path=/; max-age=0; SameSite=Strict"
+    document.cookie = "user_role=; path=/; max-age=0; SameSite=Strict"
     setUser(null)
+
     // Only redirect if not already on auth page
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-      router.replace(redirectTo || "/auth/candidate")
+      router.replace(redirectTo || roleBasedRedirect)
     }
   }, [router])
 
@@ -148,6 +175,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const secure = window.location.protocol === 'https:' ? '; Secure' : ''
       document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Strict${secure}`
       document.cookie = `refresh_token=${data.refresh_token}; path=/; max-age=604800; SameSite=Strict${secure}`
+      // Store user role cookie for session expiration redirects (longer expiry)
+      document.cookie = `user_role=${data.user.role}; path=/; max-age=2592000; SameSite=Strict${secure}`
 
       // Store user data
       const userData = {
@@ -255,6 +284,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const secure = window.location.protocol === "https:" ? "; Secure" : ""
       document.cookie = `access_token=${accessToken}; path=/; max-age=3600; SameSite=Strict${secure}`
       document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800; SameSite=Strict${secure}`
+      // Store user role cookie for session expiration redirects (longer expiry)
+      document.cookie = `user_role=${data.user.role}; path=/; max-age=2592000; SameSite=Strict${secure}`
 
       const userData = {
         ...data.user,
