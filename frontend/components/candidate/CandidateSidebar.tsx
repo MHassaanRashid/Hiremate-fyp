@@ -180,6 +180,9 @@ function AppSidebar() {
                 </p>
               </div>
             )}
+            {isExpanded && (
+              <Settings className="w-4 h-4 text-sidebar-foreground/40 group-hover:text-sidebar-foreground/80 transition-colors ml-auto" />
+            )}
           </Link>
           <button
             onClick={handleLogout}

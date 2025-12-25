@@ -632,6 +632,9 @@ export default function ResumeBuilderPage() {
             )}
           </div>
         </div>
+
+        {/* Main Content Area */}
+        {renderContent()}
       </div>
     </CandidateLayout>
   )
