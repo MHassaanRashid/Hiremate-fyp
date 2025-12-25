@@ -19,6 +19,7 @@ class JobResponse(BaseModel):
     requirements: Optional[List[str]] = None
     posted_date: Optional[datetime] = None
     logo_url: Optional[str] = None
+    applicants_count: Optional[int] = 0
 
 class ApplyRequest(BaseModel):
     note: Optional[str] = None

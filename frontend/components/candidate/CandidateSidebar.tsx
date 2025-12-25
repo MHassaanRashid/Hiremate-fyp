@@ -13,6 +13,7 @@ import {
   Calendar,
   Search,
 } from "lucide-react"
+import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import toast from "react-hot-toast"
@@ -67,12 +68,6 @@ function AppSidebar() {
     }
   }
 
-  const handleNavigation = (path: string) => {
-    router.push(path)
-    if (openMobile) {
-      setOpenMobile(false)
-    }
-  }
 
   const getInitials = (name: string) => {
     return name
@@ -128,8 +123,13 @@ function AppSidebar() {
                 const active = isActive(item.path)
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <button
-                      onClick={() => handleNavigation(item.path)}
+                    <Link
+                      href={item.path}
+                      onClick={() => {
+                        if (openMobile) {
+                          setOpenMobile(false)
+                        }
+                      }}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200",
                         active
@@ -143,7 +143,7 @@ function AppSidebar() {
                           {item.label}
                         </span>
                       )}
-                    </button>
+                    </Link>
                   </SidebarMenuItem>
                 )
               })}
@@ -155,7 +155,15 @@ function AppSidebar() {
       {/* Sidebar Footer */}
       {user && (
         <SidebarFooter className="border-t border-slate-200 p-3">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50">
+          <Link
+            href="/candidate/profile"
+            onClick={() => {
+              if (openMobile) {
+                setOpenMobile(false)
+              }
+            }}
+            className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer w-full"
+          >
             <Avatar className="w-9 h-9 border-2 border-white shadow-sm flex-shrink-0">
               <AvatarImage src={user.avatar_url || undefined} />
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-sm font-semibold">
@@ -175,7 +183,7 @@ function AppSidebar() {
             {isExpanded && (
               <Settings className="w-4 h-4 text-sidebar-foreground/40 group-hover:text-sidebar-foreground/80 transition-colors ml-auto" />
             )}
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className={cn(

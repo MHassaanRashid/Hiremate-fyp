@@ -262,7 +262,7 @@ class SettingsService:
             supabase
             .table("interviews")
             .select("*")
-            .eq("user_id", user_id)
+            .eq("candidate_id", user_id)
             .execute()
         )
         interviews = interviews_res.data or []

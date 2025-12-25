@@ -2,8 +2,6 @@
 
 import { cn } from "@/lib/utils";
 import {
-  User,
-  Shield,
   Eye,
   Bell,
   SlidersHorizontal,
@@ -11,20 +9,16 @@ import {
 } from "lucide-react";
 
 export type SettingsTabKey =
-  | "profile"
-  | "security"
   | "privacy"
   | "notifications"
   | "applications"
   | "data";
 
 const items: { key: SettingsTabKey; label: string; icon: any }[] = [
-  { key: "profile", label: "Profile Settings", icon: User },
-  { key: "security", label: "Account Security", icon: Shield },
   { key: "privacy", label: "Privacy & Visibility", icon: Eye },
   { key: "notifications", label: "Notifications", icon: Bell },
   { key: "applications", label: "Application Preferences", icon: SlidersHorizontal },
-  { key: "data", label: "Data & Export", icon: Database },
+  { key: "data", label: "Account", icon: Database },
 ];
 
 interface SettingsSidebarProps {

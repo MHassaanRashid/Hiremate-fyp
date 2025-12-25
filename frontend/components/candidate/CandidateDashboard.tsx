@@ -46,6 +46,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 
 interface CandidateDashboardProps {
   profile: CandidateProfile;
@@ -164,62 +165,144 @@ export default function CandidateDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+      <AnimatedBackground />
+      <div className="max-w-7xl mx-auto space-y-8 relative z-10">
 
-        {/* Welcome Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-2">
-              Welcome back, {profile.full_name?.split(' ')[0] || profile.name?.split(' ')[0] || 'there'}! 👋
-            </h1>
-            <p className="text-slate-600 text-lg">Here's what's happening with your job search today</p>
-          </div>
-          <Button
-            onClick={() => router.push('/candidate/find-jobs')}
-            className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-6 rounded-xl shadow-lg shadow-blue-600/30 transition-all hover:shadow-xl hover:shadow-blue-600/40"
-          >
-            <Search className="w-4 h-4 mr-2" />
-            Find Jobs
-          </Button>
-        </div>
-      </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <StatCard
-            icon={Briefcase}
-            label="Applications"
-            value={stats.applicationsSubmitted}
-            trend={formatTrend(stats.applicationsTrend)}
-            trendUp={stats.applicationsTrend !== undefined ? stats.applicationsTrend >= 0 : true}
-            color="blue"
-          />
-          <StatCard
-            icon={Eye}
-            label="Profile Views"
-            value={stats.profileViews}
-            trend={formatTrend(stats.profileViewsTrend)}
-            trendUp={stats.profileViewsTrend !== undefined ? stats.profileViewsTrend >= 0 : true}
-            color="emerald"
-          />
-          <StatCard
-            icon={Calendar}
-            label="Interviews"
-            value={stats.interviewsScheduled}
-            trend={formatTrend(stats.interviewsTrend)}
-            trendUp={stats.interviewsTrend !== undefined ? stats.interviewsTrend >= 0 : true}
-            color="purple"
-          />
-          <StatCard
-            icon={Target}
-            label="Profile Score"
-            value={stats.profileScore}
-            trend={formatTrend(stats.profileScoreTrend)}
-            trendUp={stats.profileScoreTrend !== undefined ? stats.profileScoreTrend >= 0 : true}
-            color="amber"
-          />
-        </div>
+        {/* Unified Header Card */}
+        <Card className="border-0 shadow-xl bg-white overflow-hidden">
+          <CardContent className="p-0">
+            {/* Top Section - Welcome & Action */}
+            <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex-1">
+                  <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                    Welcome back, {profile.full_name?.split(' ')[0] || profile.name?.split(' ')[0] || 'there'}! 👋
+                  </h1>
+                  <p className="text-blue-50 text-base md:text-lg">
+                    Here's what's happening with your job search today
+                  </p>
+                </div>
+                <Button
+                  onClick={() => router.push('/candidate/find-jobs')}
+                  className="bg-white hover:bg-blue-50 text-blue-600 h-12 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all font-semibold self-start md:self-center"
+                >
+                  <Search className="w-5 h-5 mr-2" />
+                  Find Jobs
+                </Button>
+              </div>
+            </div>
+
+            {/* Stats Section */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Applications */}
+              <div className="p-6 md:p-8 border-r border-b sm:border-b-0 border-slate-100 hover:bg-gradient-to-br hover:from-blue-50 hover:to-transparent transition-all group">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <p className="text-3xl md:text-4xl font-bold text-slate-900 mb-1">{stats.applicationsSubmitted}</p>
+                    <p className="text-sm text-slate-600 font-semibold">Applications</p>
+                    {formatTrend(stats.applicationsTrend) && (
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <div className={cn(
+                          "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
+                          stats.applicationsTrend !== undefined && stats.applicationsTrend >= 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        )}>
+                          {stats.applicationsTrend !== undefined && stats.applicationsTrend >= 0 ? "↗" : "↘"}
+                          {formatTrend(stats.applicationsTrend)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Views */}
+              <div className="p-6 md:p-8 border-r border-b lg:border-b-0 border-slate-100 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-transparent transition-all group">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
+                    <Eye className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <p className="text-3xl md:text-4xl font-bold text-slate-900 mb-1">{stats.profileViews}</p>
+                    <p className="text-sm text-slate-600 font-semibold">Profile Views</p>
+                    {formatTrend(stats.profileViewsTrend) && (
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <div className={cn(
+                          "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
+                          stats.profileViewsTrend !== undefined && stats.profileViewsTrend >= 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        )}>
+                          {stats.profileViewsTrend !== undefined && stats.profileViewsTrend >= 0 ? "↗" : "↘"}
+                          {formatTrend(stats.profileViewsTrend)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Interviews */}
+              <div className="p-6 md:p-8 border-r sm:border-r-0 lg:border-r border-slate-100 hover:bg-gradient-to-br hover:from-purple-50 hover:to-transparent transition-all group">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                    <Calendar className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <p className="text-3xl md:text-4xl font-bold text-slate-900 mb-1">{stats.interviewsScheduled}</p>
+                    <p className="text-sm text-slate-600 font-semibold">Interviews</p>
+                    {formatTrend(stats.interviewsTrend) && (
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <div className={cn(
+                          "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
+                          stats.interviewsTrend !== undefined && stats.interviewsTrend >= 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        )}>
+                          {stats.interviewsTrend !== undefined && stats.interviewsTrend >= 0 ? "↗" : "↘"}
+                          {formatTrend(stats.interviewsTrend)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile Score */}
+              <div className="p-6 md:p-8 hover:bg-gradient-to-br hover:from-amber-50 hover:to-transparent transition-all group">
+                <div className="flex flex-col items-center text-center space-y-3">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform">
+                    <Target className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <p className="text-3xl md:text-4xl font-bold text-slate-900 mb-1">{stats.profileScore}</p>
+                    <p className="text-sm text-slate-600 font-semibold">Profile Score</p>
+                    {formatTrend(stats.profileScoreTrend) && (
+                      <div className="flex items-center justify-center gap-1 mt-2">
+                        <div className={cn(
+                          "flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-full",
+                          stats.profileScoreTrend !== undefined && stats.profileScoreTrend >= 0
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-rose-100 text-rose-700"
+                        )}>
+                          {stats.profileScoreTrend !== undefined && stats.profileScoreTrend >= 0 ? "↗" : "↘"}
+                          {formatTrend(stats.profileScoreTrend)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
 
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -228,17 +311,22 @@ export default function CandidateDashboard({
           <div className="lg:col-span-2 space-y-8">
 
             {/* Recent Applications */}
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader className="border-b border-slate-100 pb-4">
+            <Card className="border-0 shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-slate-50 to-blue-50/50 border-b border-slate-100 pb-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold text-slate-900">Recent Applications</CardTitle>
-                    <CardDescription className="mt-1">Track your latest job applications</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg">
+                      <Briefcase className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-bold text-slate-900">Recent Applications</CardTitle>
+                      <CardDescription className="mt-1">Track your latest job applications</CardDescription>
+                    </div>
                   </div>
                   <Button
                     variant="ghost"
                     onClick={() => router.push('/candidate/applications')}
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 font-semibold"
                   >
                     View All
                     <ChevronRight className="w-4 h-4 ml-1" />
@@ -257,11 +345,11 @@ export default function CandidateDashboard({
                     {applications.slice(0, 5).map((app) => (
                       <div
                         key={app.id}
-                        className="flex items-center justify-between p-4 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all cursor-pointer group"
+                        className="flex items-center justify-between p-5 rounded-2xl border-2 border-slate-100 hover:border-blue-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-transparent transition-all cursor-pointer group hover:shadow-md"
                         onClick={() => router.push(`/candidate/applications`)}
                       >
                         <div className="flex items-center gap-4 flex-1">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-xl shadow-lg group-hover:scale-105 transition-transform">
                             {app.jobTitle.charAt(0)}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -288,15 +376,17 @@ export default function CandidateDashboard({
             </Card>
 
             {/* Recommended Jobs */}
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader className="border-b border-slate-100 pb-4">
+            <Card className="border-0 shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50/50 border-b border-slate-100 pb-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                      <Sparkles className="w-5 h-5 text-amber-500" />
-                      Recommended for You
-                    </CardTitle>
-                    <CardDescription className="mt-1">Jobs matching your profile</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-bold text-slate-900">Recommended for You</CardTitle>
+                      <CardDescription className="mt-1">Jobs matching your profile</CardDescription>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -312,7 +402,7 @@ export default function CandidateDashboard({
                     {recommendedJobs.slice(0, 3).map((job) => (
                       <div
                         key={job.id}
-                        className="p-5 rounded-xl border border-slate-100 hover:border-blue-200 hover:shadow-md transition-all cursor-pointer group"
+                        className="p-6 rounded-2xl border-2 border-slate-100 hover:border-amber-300 hover:bg-gradient-to-r hover:from-amber-50 hover:to-transparent hover:shadow-lg transition-all cursor-pointer group"
                         onClick={() => router.push('/candidate/find-jobs')}
                       >
                         <div className="flex items-start justify-between mb-3">
@@ -345,6 +435,83 @@ export default function CandidateDashboard({
                 )}
               </CardContent>
             </Card>
+
+            {/* Job Alerts */}
+            <Card className="border-0 shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50/50 border-b border-slate-100 pb-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                      <Bell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-bold text-slate-900">Job Alerts</CardTitle>
+                      <CardDescription className="mt-1">Stay updated with new opportunities</CardDescription>
+                    </div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-blue-50 to-transparent border-l-4 border-blue-500">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Briefcase className="w-4 h-4 text-blue-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 mb-1">5 new jobs match your profile</p>
+                        <p className="text-xs text-slate-600">Software Engineer positions in your area</p>
+                        <Button
+                          variant="link"
+                          className="text-blue-600 hover:text-blue-700 p-0 h-auto mt-2 text-xs font-semibold"
+                          onClick={() => router.push('/candidate/find-jobs')}
+                        >
+                          View Jobs →
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-50 to-transparent border-l-4 border-emerald-500">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Target className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 mb-1">Profile viewed by 3 companies</p>
+                        <p className="text-xs text-slate-600">Increase visibility by completing your profile</p>
+                        <Button
+                          variant="link"
+                          className="text-emerald-600 hover:text-emerald-700 p-0 h-auto mt-2 text-xs font-semibold"
+                          onClick={() => router.push('/candidate/profile')}
+                        >
+                          Complete Profile →
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-transparent border-l-4 border-amber-500">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Sparkles className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-slate-900 mb-1">Improve your resume score</p>
+                        <p className="text-xs text-slate-600">Get AI-powered suggestions to stand out</p>
+                        <Button
+                          variant="link"
+                          className="text-amber-600 hover:text-amber-700 p-0 h-auto mt-2 text-xs font-semibold"
+                          onClick={() => router.push('/candidate/resume/analyze')}
+                        >
+                          Analyze Resume →
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Right Column - Profile & Interviews */}
@@ -371,6 +538,8 @@ export default function CandidateDashboard({
                   <ProfileStrengthItem completed={profileStrength.experience} label="Experience added" />
                   <ProfileStrengthItem completed={profileStrength.education} label="Education added" />
                   <ProfileStrengthItem completed={profileStrength.skills} label="Skills added" />
+                  <ProfileStrengthItem completed={profileStrength.photo} label="Profile photo added" />
+                  <ProfileStrengthItem completed={profileStrength.certifications} label="Certifications added" />
                 </div>
                 <Button
                   onClick={() => router.push('/candidate/profile')}
@@ -383,18 +552,23 @@ export default function CandidateDashboard({
             </Card>
 
             {/* Upcoming Interviews */}
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader className="border-b border-slate-100 pb-4">
+            <Card className="border-0 shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50/50 border-b border-slate-100 pb-5">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg font-bold text-slate-900">Upcoming Interviews</CardTitle>
-                    <CardDescription className="mt-1 text-sm">Your scheduled meetings</CardDescription>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+                      <Calendar className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg font-bold text-slate-900">Upcoming Interviews</CardTitle>
+                      <CardDescription className="mt-1 text-sm">Your scheduled meetings</CardDescription>
+                    </div>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => router.push('/candidate/interviews')}
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-100 font-semibold"
                   >
                     View All
                   </Button>
@@ -411,19 +585,25 @@ export default function CandidateDashboard({
                     {interviews.slice(0, 3).map((interview) => (
                       <div
                         key={interview.id}
-                        className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-blue-50/50 transition-all cursor-pointer"
+                        className="p-4 md:p-5 rounded-2xl bg-gradient-to-r from-purple-50/50 to-transparent border-2 border-purple-100 hover:border-purple-300 hover:shadow-md transition-all cursor-pointer group"
                         onClick={() => router.push('/candidate/interviews')}
                       >
-                        <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-slate-900 text-sm">{interview.position}</h4>
-                          <Video className="w-4 h-4 text-blue-600" />
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
+                          <h4 className="font-bold text-slate-900 text-sm sm:text-base group-hover:text-purple-600 transition-colors flex-1">{interview.position}</h4>
+                          <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center group-hover:scale-110 transition-transform flex-shrink-0">
+                            <Video className="w-4 h-4 text-purple-600" />
+                          </div>
                         </div>
-                        <p className="text-xs text-slate-600 mb-2">{interview.company}</p>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          <Calendar className="w-3 h-3" />
-                          {new Date(interview.date).toLocaleDateString()}
-                          <Clock className="w-3 h-3 ml-2" />
-                          {interview.time}
+                        <p className="text-xs sm:text-sm text-slate-600 mb-2">{interview.company}</p>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(interview.date).toLocaleDateString()}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {interview.time}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -433,26 +613,36 @@ export default function CandidateDashboard({
             </Card>
 
             {/* Quick Actions */}
-            <Card className="border-0 shadow-lg bg-white">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-lg font-bold text-slate-900">Quick Actions</CardTitle>
+            <Card className="border-0 shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50/50 pb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg">
+                    <Zap className="w-5 h-5" />
+                  </div>
+                  <CardTitle className="text-lg font-bold text-slate-900">Quick Actions</CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="p-6 pt-0">
                 <div className="space-y-2">
                   <QuickActionButton
-                    icon={Upload}
-                    label="Upload Resume"
+                    icon={FileText}
+                    label="Resume Builder"
                     onClick={() => router.push('/candidate/resume')}
+                  />
+                  <QuickActionButton
+                    icon={Sparkles}
+                    label="AI Resume Analyzer"
+                    onClick={() => router.push('/candidate/resume/analyze')}
+                  />
+                  <QuickActionButton
+                    icon={Award}
+                    label="Take Skills Test"
+                    onClick={() => router.push('/candidate/tests')}
                   />
                   <QuickActionButton
                     icon={Search}
                     label="Browse Jobs"
                     onClick={() => router.push('/candidate/find-jobs')}
-                  />
-                  <QuickActionButton
-                    icon={User}
-                    label="Edit Profile"
-                    onClick={() => router.push('/candidate/profile')}
                   />
                 </div>
               </CardContent>
@@ -542,8 +732,9 @@ function QuickActionButton({ icon: Icon, label, onClick }: {
 
 function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+      <AnimatedBackground />
+      <div className="max-w-7xl mx-auto space-y-8 relative z-10">
         <div className="h-20 bg-slate-200 rounded-xl animate-pulse" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (

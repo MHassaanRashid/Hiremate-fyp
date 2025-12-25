@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import toast from "react-hot-toast"
 import CandidateLayout from "@/layouts/CandidateLayout"
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 
 import {
   PersonalInfoComponent,
@@ -373,21 +374,66 @@ export default function ResumeBuilderPage() {
   if (loading) {
     return (
       <CandidateLayout>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
-          <div className="text-center">
-            <div className="relative w-24 h-24 mx-auto mb-8">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full animate-ping opacity-20"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full animate-pulse opacity-30"></div>
-              <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 rounded-full w-24 h-24 flex items-center justify-center shadow-2xl">
-                <FileText className="w-12 h-12 text-white animate-pulse" />
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative">
+          <div className="absolute inset-0 z-0">
+            <AnimatedBackground />
+          </div>
+
+          {/* Top Bar Skeleton */}
+          <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200 shadow-sm">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-slate-200 rounded-xl animate-pulse"></div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-slate-200 rounded-xl animate-pulse"></div>
+                    <div>
+                      <div className="h-6 w-40 bg-slate-200 rounded animate-pulse mb-2"></div>
+                      <div className="h-3 w-32 bg-slate-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-9 w-32 bg-slate-200 rounded-lg animate-pulse"></div>
               </div>
             </div>
-            <h3 className="text-2xl font-bold text-slate-900 mb-2">Loading Your Resume</h3>
-            <p className="text-slate-600">Preparing your workspace...</p>
-            <div className="mt-6 flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-2 h-2 bg-pink-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
+
+          <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6 relative z-10">
+            {/* Progress Section Skeleton */}
+            <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+              <div className="bg-slate-200 p-4 animate-pulse">
+                <div className="h-6 w-48 bg-slate-300 rounded mb-2"></div>
+                <div className="h-4 w-32 bg-slate-300 rounded"></div>
+              </div>
+              <div className="p-4">
+                <div className="h-2 bg-slate-200 rounded-full mb-4 animate-pulse"></div>
+                <div className="flex gap-2 flex-wrap justify-center">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="h-8 w-24 bg-slate-200 rounded-lg animate-pulse"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Form Content Skeleton */}
+            <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+              <div className="p-8 md:p-10 space-y-6">
+                <div className="h-8 w-64 bg-slate-200 rounded animate-pulse mb-6"></div>
+                <div className="space-y-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-4 w-32 bg-slate-200 rounded animate-pulse"></div>
+                      <div className="h-12 bg-slate-200 rounded-lg animate-pulse"></div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Skeleton */}
+            <div className="flex items-center justify-between gap-4 pb-8">
+              <div className="h-12 w-32 bg-slate-200 rounded-2xl animate-pulse"></div>
+              <div className="h-12 w-32 bg-slate-200 rounded-2xl animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -401,7 +447,10 @@ export default function ResumeBuilderPage() {
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 relative">
+        <div className="absolute inset-0 z-0">
+          <AnimatedBackground />
+        </div>
         {/* Top Bar */}
         <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-200 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-4">
@@ -453,7 +502,7 @@ export default function ResumeBuilderPage() {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 py-6 space-y-6 relative z-10">
           {/* Minimalistic Progress Section */}
           <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
             {/* Compact Header */}

@@ -12,14 +12,33 @@ class JobsService:
                 query = query.or_(f"job_title.ilike.%{search}%,company_name.ilike.%{search}%")
             
             if location and location != "All Locations":
-                query = query.eq("location", location)
+                # Use ilike for partial/fuzzy location matching
+                # This allows "New York" to match "New York, NY" or "Remote" to match "Remote - USA"
+                query = query.ilike("location", f"%{location}%")
                 
             if job_type and job_type != "All Types":
                 query = query.eq("job_type", job_type)
+            
+            # Sort by posted_date descending (latest first)
+            query = query.order("posted_date", desc=True)
                 
             response = query.execute()
-            # print(f"Jobs query response: {response.data}")
-            return response.data
+            jobs = response.data
+            
+            # Add applicants_count for each job
+            for job in jobs:
+                # Fetch applications and count them manually
+                applications_response = supabase.table("applications")\
+                    .select("id")\
+                    .eq("job_id", job["id"])\
+                    .execute()
+                
+                # Count the applications
+                applicants_count = len(applications_response.data) if applications_response.data else 0
+                job["applicants_count"] = applicants_count
+                print(f"Job {job['id']} ({job.get('job_title', 'Unknown')}): {applicants_count} applicants")
+            
+            return jobs
         except Exception as e:
             print(f"Error listing jobs: {e}")
             return []

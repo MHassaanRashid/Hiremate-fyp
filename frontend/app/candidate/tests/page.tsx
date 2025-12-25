@@ -30,6 +30,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Checkbox } from "@/components/ui/checkbox"
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 
 export default function TestsPage() {
     const router = useRouter()
@@ -93,8 +94,9 @@ export default function TestsPage() {
     if (loading) {
         return (
             <CandidateLayout>
-                <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-                    <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+                    <AnimatedBackground />
+                    <div className="max-w-7xl mx-auto flex items-center justify-center min-h-[60vh] relative z-10">
                         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
                     </div>
                 </div>
@@ -104,8 +106,9 @@ export default function TestsPage() {
 
     return (
         <CandidateLayout>
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-                <div className="max-w-7xl mx-auto space-y-8">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+                <AnimatedBackground />
+                <div className="max-w-7xl mx-auto space-y-8 relative z-10">
 
                     {/* Header */}
                     <div>
