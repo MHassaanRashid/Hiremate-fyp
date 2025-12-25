@@ -5,24 +5,16 @@ import { useAuth } from "@/contexts/auth-context";
 import CandidateLayout from "@/layouts/CandidateLayout";
 import { SettingsSidebar, type SettingsTabKey } from "@/components/settings/SettingsSidebar";
 import { ToggleSwitch } from "@/components/settings/ToggleSwitch";
-import { PasswordStrengthMeter } from "@/components/settings/PasswordStrengthMeter";
 import { SaveIndicator, type SaveState } from "@/components/settings/SaveIndicator";
-import { FileUploadWithPreview } from "@/components/settings/FileUploadWithPreview";
 import { ConfirmationModal } from "@/components/settings/ConfirmationModal";
-import { SecuritySessionsList } from "@/components/settings/SecuritySessionsList";
 import {
-  getProfileSettings,
-  updateProfileSettings,
-  updatePassword,
   getPrivacySettings,
   updatePrivacySettings,
   getNotificationSettings,
   updateNotificationSettings,
   getApplicationPreferences,
   updateApplicationPreferences,
-  exportPersonalData,
   requestAccountDeletion,
-  type ProfileSettingsResponse,
   type PrivacySettings,
   type NotificationSettings,
   type ApplicationPreferences,
@@ -33,19 +25,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Mail,
-  Phone,
-  MapPin,
-  Globe2,
-  Linkedin,
-  Github,
-  ShieldCheck,
-  Lock,
   Bell,
   SlidersHorizontal,
-  Database,
-  ArrowDownToLine,
 } from "lucide-react";
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 
 function getAccessToken() {
   if (typeof window === "undefined") return null;
@@ -55,26 +38,17 @@ function getAccessToken() {
 export default function CandidateSettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<SettingsTabKey>("profile");
+  const [activeTab, setActiveTab] = useState<SettingsTabKey>("privacy");
 
-  const [profile, setProfile] = useState<ProfileSettingsResponse | null>(null);
   const [privacy, setPrivacy] = useState<PrivacySettings | null>(null);
   const [notifications, setNotifications] = useState<NotificationSettings | null>(null);
   const [applicationPrefs, setApplicationPrefs] = useState<ApplicationPreferences | null>(null);
 
-  const [profileSaveState, setProfileSaveState] = useState<SaveState>("idle");
   const [privacySaveState, setPrivacySaveState] = useState<SaveState>("idle");
   const [notificationsSaveState, setNotificationsSaveState] = useState<SaveState>("idle");
   const [applicationsSaveState, setApplicationsSaveState] = useState<SaveState>("idle");
 
-  const [passwordState, setPasswordState] = useState<{
-    current: string;
-    next: string;
-    confirm: string;
-    saving: boolean;
-    error?: string;
-    success?: string;
-  }>({ current: "", next: "", confirm: "", saving: false });
+
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,13 +64,11 @@ export default function CandidateSettingsPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const [profileRes, privacyRes, notifRes, appRes] = await Promise.all([
-          getProfileSettings(token),
+        const [privacyRes, notifRes, appRes] = await Promise.all([
           getPrivacySettings(token),
           getNotificationSettings(token),
           getApplicationPreferences(token),
         ]);
-        setProfile(profileRes);
         setPrivacy(privacyRes);
         setNotifications(notifRes);
         setApplicationPrefs(appRes);
@@ -113,25 +85,7 @@ export default function CandidateSettingsPage() {
     }
   }, [authLoading, user]);
 
-  // Debounced auto-save for profile
-  useEffect(() => {
-    if (!profile) return;
-    const token = getAccessToken();
-    if (!token) return;
 
-    setProfileSaveState("saving");
-    const timeout = setTimeout(async () => {
-      try {
-        await updateProfileSettings(token, profile);
-        setProfileSaveState("saved");
-        setTimeout(() => setProfileSaveState("idle"), 1500);
-      } catch (err) {
-        setProfileSaveState("error");
-      }
-    }, 800);
-
-    return () => clearTimeout(timeout);
-  }, [profile?.full_name, profile?.phone, profile?.location, profile?.links, profile?.avatar_url]);
 
   const handlePrivacyChange = async (next: PrivacySettings) => {
     setPrivacy(next);
@@ -176,26 +130,15 @@ export default function CandidateSettingsPage() {
   };
 
   const isLoaded = useMemo(
-    () => !!profile && !!privacy && !!notifications && !!applicationPrefs,
-    [profile, privacy, notifications, applicationPrefs]
+    () => !!privacy && !!notifications && !!applicationPrefs,
+    [privacy, notifications, applicationPrefs]
   );
-
-  // Auth guard
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-14 h-14 border-t-4 border-blue-500 border-solid rounded-full animate-spin mx-auto" />
-          <p className="mt-4 text-gray-600">Loading your settings...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100">
-        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 relative">
+        <AnimatedBackground />
+        <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 relative z-10">
           <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Account settings</h1>
@@ -222,23 +165,20 @@ export default function CandidateSettingsPage() {
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {(
                   [
-                    { key: "profile", label: "Profile" },
-                    { key: "security", label: "Security" },
                     { key: "privacy", label: "Privacy" },
                     { key: "notifications", label: "Notifications" },
                     { key: "applications", label: "Applications" },
-                    { key: "data", label: "Data" },
+                    { key: "data", label: "Account" },
                   ] as { key: SettingsTabKey; label: string }[]
                 ).map((t) => (
                   <button
                     key={t.key}
                     type="button"
                     onClick={() => setActiveTab(t.key)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium border ${
-                      activeTab === t.key
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white/80 text-gray-700 border-blue-100"
-                    }`}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border ${activeTab === t.key
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white/80 text-gray-700 border-blue-100"
+                      }`}
                   >
                     {t.label}
                   </button>
@@ -247,24 +187,10 @@ export default function CandidateSettingsPage() {
             </div>
 
             <main className="flex-1 w-full">
-              {!isLoaded || isLoading ? (
+              {authLoading || !user || !isLoaded || isLoading ? (
                 <SettingsSkeleton />
               ) : (
                 <div className="space-y-6">
-                  {activeTab === "profile" && profile && (
-                    <ProfileSettingsTab
-                      profile={profile}
-                      onChange={setProfile}
-                      saveState={profileSaveState}
-                    />
-                  )}
-                  {activeTab === "security" && profile && (
-                    <SecuritySettingsTab
-                      sessions={profile.sessions}
-                      passwordState={passwordState}
-                      setPasswordState={setPasswordState}
-                    />
-                  )}
                   {activeTab === "privacy" && privacy && (
                     <PrivacySettingsTab
                       privacy={privacy}
@@ -299,299 +225,6 @@ export default function CandidateSettingsPage() {
   );
 }
 
-// -------- Tabs content components ---------
-
-interface ProfileTabProps {
-  profile: ProfileSettingsResponse;
-  onChange: (p: ProfileSettingsResponse) => void;
-  saveState: SaveState;
-}
-
-function ProfileSettingsTab({ profile, onChange, saveState }: ProfileTabProps) {
-  return (
-    <section className="space-y-4" aria-label="Profile settings">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">Profile settings</h2>
-          <p className="text-xs text-gray-500">
-            Update your personal information and how employers see you.
-          </p>
-        </div>
-        <SaveIndicator state={saveState} />
-      </div>
-
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-4">
-        <FileUploadWithPreview
-          initialUrl={profile.avatar_url || null}
-          onFileSelected={async () => {
-            // Upload to storage could be wired here; for now we just update preview & auto-save
-          }}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Full name</label>
-            <Input
-              value={profile.full_name || ""}
-              onChange={(e) => onChange({ ...profile, full_name: e.target.value })}
-              placeholder="Your full name"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Email</label>
-            <div className="relative">
-              <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                type="email"
-                value={profile.email}
-                onChange={(e) => onChange({ ...profile, email: e.target.value })}
-                className="pl-7"
-                placeholder="you@example.com"
-              />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Phone</label>
-            <div className="relative">
-              <Phone className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                value={profile.phone || ""}
-                onChange={(e) => onChange({ ...profile, phone: e.target.value })}
-                className="pl-7"
-                placeholder="+1 234 567 890"
-              />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Location</label>
-            <div className="relative">
-              <MapPin className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                value={profile.location || ""}
-                onChange={(e) => onChange({ ...profile, location: e.target.value })}
-                className="pl-7"
-                placeholder="City, Country or Remote"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <h3 className="text-xs font-semibold text-gray-900">Professional links</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Portfolio / website</label>
-            <div className="relative">
-              <Globe2 className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                value={profile.links?.portfolio || ""}
-                onChange={(e) =>
-                  onChange({
-                    ...profile,
-                    links: { ...profile.links, portfolio: e.target.value },
-                  })
-                }
-                className="pl-7"
-                placeholder="https://your-portfolio.com"
-              />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">LinkedIn</label>
-            <div className="relative">
-              <Linkedin className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                value={profile.links?.linkedin || ""}
-                onChange={(e) =>
-                  onChange({
-                    ...profile,
-                    links: { ...profile.links, linkedin: e.target.value },
-                  })
-                }
-                className="pl-7"
-                placeholder="https://linkedin.com/in/username"
-              />
-            </div>
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">GitHub</label>
-            <div className="relative">
-              <Github className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <Input
-                value={profile.links?.github || ""}
-                onChange={(e) =>
-                  onChange({
-                    ...profile,
-                    links: { ...profile.links, github: e.target.value },
-                  })
-                }
-                className="pl-7"
-                placeholder="https://github.com/username"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-interface SecurityTabProps {
-  sessions?: ProfileSettingsResponse["sessions"];
-  passwordState: {
-    current: string;
-    next: string;
-    confirm: string;
-    saving: boolean;
-    error?: string;
-    success?: string;
-  };
-  setPasswordState: (s: SecurityTabProps["passwordState"]) => void;
-}
-
-function SecuritySettingsTab({ sessions, passwordState, setPasswordState }: SecurityTabProps) {
-  const token = getAccessToken();
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-
-    if (!passwordState.next || passwordState.next !== passwordState.confirm) {
-      setPasswordState({ ...passwordState, error: "Passwords do not match", success: undefined });
-      return;
-    }
-
-    try {
-      setPasswordState({ ...passwordState, saving: true, error: undefined, success: undefined });
-      await updatePassword(token, {
-        current_password: passwordState.current,
-        new_password: passwordState.next,
-      });
-      setPasswordState({ current: "", next: "", confirm: "", saving: false, success: "Password updated" });
-    } catch (err: any) {
-      setPasswordState({
-        ...passwordState,
-        saving: false,
-        error: err?.message || "Failed to update password",
-        success: undefined,
-      });
-    }
-  };
-
-  return (
-    <section className="space-y-4" aria-label="Account security settings">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">Account security</h2>
-          <p className="text-xs text-gray-500">
-            Keep your account secure with a strong password and login activity monitoring.
-          </p>
-        </div>
-      </div>
-
-      {/* Change password */}
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Lock className="w-4 h-4 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="text-xs font-semibold text-gray-900">Change password</h3>
-            <p className="text-[11px] text-gray-500">Use at least 8 characters with numbers and symbols.</p>
-          </div>
-        </div>
-        <form onSubmit={handlePasswordSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Current password</label>
-            <Input
-              type="password"
-              value={passwordState.current}
-              onChange={(e) =>
-                setPasswordState({ ...passwordState, current: e.target.value })
-              }
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">New password</label>
-            <Input
-              type="password"
-              value={passwordState.next}
-              onChange={(e) =>
-                setPasswordState({ ...passwordState, next: e.target.value })
-              }
-              required
-            />
-            <PasswordStrengthMeter password={passwordState.next} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-gray-700">Confirm new password</label>
-            <Input
-              type="password"
-              value={passwordState.confirm}
-              onChange={(e) =>
-                setPasswordState({ ...passwordState, confirm: e.target.value })
-              }
-              required
-            />
-          </div>
-          <div className="md:col-span-3 flex items-center justify-between pt-1">
-            <div className="text-xs text-red-600 min-h-[1rem]">
-              {passwordState.error && <span>{passwordState.error}</span>}
-              {passwordState.success && (
-                <span className="text-emerald-600">{passwordState.success}</span>
-              )}
-            </div>
-            <Button
-              type="submit"
-              disabled={passwordState.saving}
-              className="bg-blue-600 hover:bg-blue-700 text-xs px-4 py-1.5"
-            >
-              {passwordState.saving ? "Updating..." : "Update password"}
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      {/* Two-factor placeholder + sessions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-xs font-semibold text-gray-900">Two-factor authentication</h3>
-              <p className="text-[11px] text-gray-500">
-                Add an extra layer of security. Coming soon in this prototype.
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            disabled
-            className="bg-gray-100 text-gray-400 h-8 text-xs mt-1 cursor-not-allowed"
-          >
-            Set up two-factor authentication
-          </Button>
-        </div>
-        <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="text-xs font-semibold text-gray-900">Login activity</h3>
-              <p className="text-[11px] text-gray-500">Recent sessions and sign-ins.</p>
-            </div>
-          </div>
-          <SecuritySessionsList sessions={sessions} />
-        </div>
-      </div>
-    </section>
-  );
-}
 
 interface PrivacyTabProps {
   privacy: PrivacySettings;
@@ -636,11 +269,10 @@ function PrivacySettingsTab({ privacy, onChange, saveState }: PrivacyTabProps) {
                 key={opt.key}
                 type="button"
                 onClick={() => onChange({ ...privacy, profile_visibility: opt.key as any })}
-                className={`flex-1 rounded-xl border px-3 py-2 text-left text-xs ${
-                  privacy.profile_visibility === opt.key
-                    ? "border-blue-500 bg-blue-50 text-blue-800"
-                    : "border-gray-200 bg-white text-gray-700"
-                }`}
+                className={`flex-1 rounded-xl border px-3 py-2 text-left text-xs ${privacy.profile_visibility === opt.key
+                  ? "border-blue-500 bg-blue-50 text-blue-800"
+                  : "border-gray-200 bg-white text-gray-700"
+                  }`}
               >
                 <p className="font-medium">{opt.label}</p>
                 <p className="text-[11px] text-gray-500">{opt.description}</p>
@@ -800,11 +432,10 @@ function NotificationSettingsTab({ settings, onChange, saveState }: Notification
                 key={opt.key}
                 type="button"
                 onClick={() => onChange({ ...settings, frequency: opt.key as any })}
-                className={`rounded-full border px-3 py-1 ${
-                  settings.frequency === opt.key
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-blue-100"
-                }`}
+                className={`rounded-full border px-3 py-1 ${settings.frequency === opt.key
+                  ? "bg-blue-600 text-white border-blue-600"
+                  : "bg-white text-gray-700 border-blue-100"
+                  }`}
               >
                 {opt.label}
               </button>
@@ -869,11 +500,10 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
                     key={opt.key}
                     type="button"
                     onClick={() => toggleJobType(opt.key)}
-                    className={`rounded-full border px-3 py-1 ${
-                      active
-                        ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-blue-100"
-                    }`}
+                    className={`rounded-full border px-3 py-1 ${active
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-white text-gray-700 border-blue-100"
+                      }`}
                   >
                     {opt.label}
                   </button>
@@ -974,34 +604,6 @@ function ApplicationPreferencesTab({ prefs, onChange, saveState }: ApplicationTa
 }
 
 function DataExportTab() {
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-
-  const handleExport = async () => {
-    const token = getAccessToken();
-    if (!token) return;
-    try {
-      setIsExporting(true);
-      setExportError(null);
-      const data = await exportPersonalData(token);
-      const blob = new Blob([JSON.stringify(data, null, 2)], {
-        type: "application/json;charset=utf-8;",
-      });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "hiremate-personal-data.json");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setExportError(err?.message || "Failed to export data");
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   const handleAccountDeletion = async () => {
     const token = getAccessToken();
     if (!token) return;
@@ -1017,37 +619,11 @@ function DataExportTab() {
     <section className="space-y-4" aria-label="Data and export settings">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">Data & export</h2>
+          <h2 className="text-sm font-semibold text-gray-900">Account Management</h2>
           <p className="text-xs text-gray-500">
-            Download your data or request deletion in line with privacy regulations.
+            Manage your account and request deletion if needed.
           </p>
         </div>
-      </div>
-
-      <div className="rounded-2xl bg-white/90 border border-blue-100 shadow-sm p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <Database className="w-4 h-4 text-blue-600" />
-          </div>
-          <div>
-            <h3 className="text-xs font-semibold text-gray-900">Download your data</h3>
-            <p className="text-[11px] text-gray-500">
-              Export a copy of your profile, resume, applications, interviews, and settings.
-            </p>
-          </div>
-        </div>
-        <Button
-          type="button"
-          onClick={handleExport}
-          disabled={isExporting}
-          className="bg-blue-600 hover:bg-blue-700 text-xs h-8 px-4 inline-flex items-center gap-1"
-        >
-          <ArrowDownToLine className="w-3 h-3" />
-          {isExporting ? "Preparing export..." : "Download JSON"}
-        </Button>
-        {exportError && (
-          <p className="text-[11px] text-red-600 mt-1">{exportError}</p>
-        )}
       </div>
 
       {/* Danger zone */}

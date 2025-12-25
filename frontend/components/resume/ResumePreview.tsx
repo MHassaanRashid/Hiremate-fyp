@@ -119,10 +119,11 @@ export const ResumePreviewComponent = memo<ResumePreviewProps>(({ data, onFinalS
 
   // Group skills by category
   const skillsByCategory = safeSkills.reduce((acc, skill) => {
-    if (!acc[skill.category]) {
-      acc[skill.category] = []
+    const category = skill.category || 'Other Skills'
+    if (!acc[category]) {
+      acc[category] = []
     }
-    acc[skill.category].push(skill)
+    acc[category].push(skill)
     return acc
   }, {} as Record<string, typeof safeSkills>)
 
@@ -145,6 +146,7 @@ export const ResumePreviewComponent = memo<ResumePreviewProps>(({ data, onFinalS
     experience: safeExperience,
     education: safeEducation,
     skills: safeSkills,
+    skillsByCategory: skillsByCategory,
     projects: safeProjects,
     certificates: safeCertificates
   })
@@ -362,8 +364,8 @@ export const ResumePreviewComponent = memo<ResumePreviewProps>(({ data, onFinalS
                           {category}
                         </h4>
                         <div className="space-y-3">
-                          {skills.map((skill) => (
-                            <div key={skill.name} className="skill-item">
+                          {skills.map((skill, skillIndex) => (
+                            <div key={`${skill.name}-${skillIndex}`} className="skill-item">
                               <div className="flex-1">
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="text-sm font-semibold text-slate-800">{skill.name}</span>

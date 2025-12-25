@@ -41,6 +41,8 @@ import { supabase } from "@/lib/supabaseClient"
 import toast from "react-hot-toast"
 import { ApplicationDialog } from "@/components/candidate/ApplicationDialog"
 import { cn } from "@/lib/utils"
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
+import { JobDetailsModal } from "@/components/candidate/JobDetailsModal"
 
 export default function FindJobsPage() {
     const [jobs, setJobs] = useState<Job[]>([])
@@ -50,7 +52,10 @@ export default function FindJobsPage() {
     const [type, setType] = useState("All Types")
     const [selectedJob, setSelectedJob] = useState<Job | null>(null)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
     const [savedJobs, setSavedJobs] = useState<Set<string>>(new Set())
+    const [locationSearch, setLocationSearch] = useState("")
+
 
     // Prevent duplicate toasts
     const lastToastTime = useRef<number>(0)
@@ -77,7 +82,14 @@ export default function FindJobsPage() {
         try {
             const { data: { session } } = await supabase.auth.getSession()
             if (session) {
-                const data = await getJobs(session.access_token, search, location, type)
+                // Use locationSearch for city/area filtering
+                // Use location for work mode filtering (Remote/On-site/Hybrid)
+                const locationParam = locationSearch || (location !== "All Locations" ? location : undefined)
+                const typeParam = type !== "All Types" ? type : undefined
+                const data = await getJobs(session.access_token, search, locationParam, typeParam)
+                console.log("Jobs fetched:", data)
+                console.log("First job:", data[0])
+                console.log("First job applicants_count:", data[0]?.applicants_count)
                 if (isMounted.current) {
                     setJobs(data)
                 }
@@ -94,17 +106,38 @@ export default function FindJobsPage() {
         }
     }
 
+    // Initial load
     useEffect(() => {
         fetchJobs()
     }, [])
+
+    // Auto-search when filters change
+    useEffect(() => {
+        if (isMounted.current) {
+            fetchJobs()
+        }
+    }, [location, type])
 
     const handleSearch = () => {
         fetchJobs()
     }
 
+    const handleClearFilters = () => {
+        setSearch("")
+        setLocationSearch("")
+        setLocation("All Locations")
+        setType("All Types")
+        // fetchJobs will be called automatically by the useEffect
+    }
+
     const handleApplyClick = (job: Job) => {
         setSelectedJob(job)
         setIsDialogOpen(true)
+    }
+
+    const handleViewDetails = (job: Job) => {
+        setSelectedJob(job)
+        setIsDetailsModalOpen(true)
     }
 
     const handleConfirmApply = async (note?: string) => {
@@ -164,59 +197,88 @@ export default function FindJobsPage() {
 
     return (
         <CandidateLayout>
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-                <div className="max-w-4xl mx-auto space-y-6">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+                <AnimatedBackground />
+                <div className="max-w-5xl mx-auto space-y-6 relative z-10">
 
-                    {/* Integrated Header */}
-                    <div>
-                        <h1 className="text-3xl font-bold text-slate-900 mb-2">Discover Jobs</h1>
-                        <p className="text-slate-600">
-                            <span className="font-semibold text-blue-600">{jobs.length}</span> opportunities available
-                        </p>
-                    </div>
+                    {/* Clean Professional Header */}
+                    <Card className="border-0 shadow-xl bg-white overflow-hidden">
+                        <CardContent className="p-0">
+                            {/* Header with Search */}
+                            <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 p-6 md:p-8">
+                                <div className="mb-6">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                                        Find Your Next Opportunity
+                                    </h1>
+                                    <p className="text-blue-100">
+                                        Discover jobs that match your skills and career goals
+                                    </p>
+                                </div>
 
-                    {/* Search Card */}
-                    <Card className="border-0 shadow-lg bg-white">
-                        <CardContent className="p-5">
-                            <div className="space-y-3">
-                                <div className="flex gap-3">
+                                {/* Search Bar */}
+                                <div className="flex flex-col sm:flex-row gap-3">
                                     <div className="relative flex-1">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                                         <Input
                                             placeholder="Search by job title, keyword, or company..."
                                             value={search}
                                             onChange={(e) => setSearch(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                            className="pl-10 h-10 border-slate-200 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20"
+                                            className="pl-12 h-12 border-0 bg-white shadow-md text-base rounded-xl focus:ring-2 focus:ring-white/50"
                                         />
                                     </div>
                                     <Button
                                         onClick={handleSearch}
-                                        size="sm"
-                                        className="h-10 px-6 bg-blue-600 hover:bg-blue-700"
+                                        className="bg-white hover:bg-blue-50 text-blue-600 h-12 px-8 rounded-xl shadow-lg font-semibold"
                                         disabled={loading}
                                     >
-                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                                        {loading ? (
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Search className="w-5 h-5 mr-2" />
+                                                Search
+                                            </>
+                                        )}
                                     </Button>
                                 </div>
+                            </div>
 
-                                <div className="flex gap-3">
+                            {/* Filters Bar */}
+                            <div className="bg-slate-50 px-6 py-4 border-t border-slate-100">
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className="text-sm font-medium text-slate-700">Filter by:</span>
+
+                                    {/* City/Area Search */}
+                                    <div className="relative">
+                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <Input
+                                            placeholder="City or area..."
+                                            value={locationSearch}
+                                            onChange={(e) => setLocationSearch(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                                            className="pl-9 h-10 w-[180px] bg-white border-slate-200 rounded-lg focus:border-blue-400 text-sm"
+                                        />
+                                    </div>
+
+                                    {/* Work Mode Filter */}
                                     <Select value={location} onValueChange={setLocation}>
-                                        <SelectTrigger className="h-9 text-sm border-slate-200">
-                                            <MapPin className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                                        <SelectTrigger className="h-10 w-auto min-w-[140px] bg-white border-slate-200 rounded-lg hover:border-blue-400 transition-colors">
+                                            <Briefcase className="w-4 h-4 mr-2 text-slate-500" />
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="All Locations">All Locations</SelectItem>
+                                            <SelectItem value="All Locations">All Modes</SelectItem>
                                             <SelectItem value="Remote">Remote</SelectItem>
-                                            <SelectItem value="New York">New York</SelectItem>
-                                            <SelectItem value="San Francisco">San Francisco</SelectItem>
-                                            <SelectItem value="London">London</SelectItem>
+                                            <SelectItem value="On-site">On-site</SelectItem>
+                                            <SelectItem value="Hybrid">Hybrid</SelectItem>
                                         </SelectContent>
                                     </Select>
+
+                                    {/* Job Type Filter */}
                                     <Select value={type} onValueChange={setType}>
-                                        <SelectTrigger className="h-9 text-sm border-slate-200">
-                                            <Briefcase className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                                        <SelectTrigger className="h-10 w-auto min-w-[140px] bg-white border-slate-200 rounded-lg hover:border-blue-400 transition-colors">
+                                            <Clock className="w-4 h-4 mr-2 text-slate-500" />
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -227,6 +289,58 @@ export default function FindJobsPage() {
                                             <SelectItem value="Internship">Internship</SelectItem>
                                         </SelectContent>
                                     </Select>
+
+                                    {(location !== "All Locations" || type !== "All Types" || search || locationSearch) && (
+                                        <Button
+                                            onClick={handleClearFilters}
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-10 px-4 text-slate-600 hover:bg-slate-100 rounded-lg"
+                                        >
+                                            <Filter className="w-4 h-4 mr-2" />
+                                            Clear Filters
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Results Summary */}
+                            <div className="px-6 py-4 bg-white border-t border-slate-100">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-2xl font-bold text-blue-600">{jobs.length}</span>
+                                        <span className="text-base font-medium text-slate-700">
+                                            {jobs.length === 1 ? 'job' : 'jobs'} available
+                                        </span>
+                                        {(locationSearch || location !== "All Locations" || type !== "All Types") && (
+                                            <>
+                                                <span className="text-slate-300">•</span>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {locationSearch && (
+                                                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 px-2.5 py-0.5">
+                                                            📍 {locationSearch}
+                                                        </Badge>
+                                                    )}
+                                                    {location !== "All Locations" && (
+                                                        <Badge className="bg-blue-50 text-blue-700 border-blue-200 px-2.5 py-0.5">
+                                                            {location}
+                                                        </Badge>
+                                                    )}
+                                                    {type !== "All Types" && (
+                                                        <Badge className="bg-purple-50 text-purple-700 border-purple-200 px-2.5 py-0.5">
+                                                            {type}
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                    {savedJobs.size > 0 && (
+                                        <div className="flex items-center gap-2 text-sm text-slate-600">
+                                            <BookmarkCheck className="w-4 h-4 text-amber-600" />
+                                            <span>{savedJobs.size} saved</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -267,6 +381,7 @@ export default function FindJobsPage() {
                                         key={job.id}
                                         job={job}
                                         onApply={handleApplyClick}
+                                        onViewDetails={handleViewDetails}
                                         isSaved={savedJobs.has(job.id)}
                                         onToggleSave={toggleSaveJob}
                                     />
@@ -277,6 +392,7 @@ export default function FindJobsPage() {
                 </div> {/* Closes max-w-4xl mx-auto space-y-6 */}
             </div> {/* Closes min-h-screen bg-gradient-to-br ... */}
 
+            {/* Application Dialog */}
             <ApplicationDialog
                 job={selectedJob || { id: '', company_name: '', job_title: '', location: '', job_type: '' }}
                 open={isDialogOpen}
@@ -286,13 +402,27 @@ export default function FindJobsPage() {
                 }}
                 onConfirm={handleConfirmApply}
             />
+
+            {/* Job Details Modal */}
+            <JobDetailsModal
+                job={selectedJob}
+                open={isDetailsModalOpen}
+                onOpenChange={(open) => {
+                    setIsDetailsModalOpen(open)
+                    if (!open) setSelectedJob(null)
+                }}
+                onApply={handleApplyClick}
+                isSaved={selectedJob ? savedJobs.has(selectedJob.id) : false}
+                onToggleSave={toggleSaveJob}
+            />
         </CandidateLayout>
     )
 }
 
-function CompactJobCard({ job, onApply, isSaved, onToggleSave }: {
+function CompactJobCard({ job, onApply, onViewDetails, isSaved, onToggleSave }: {
     job: Job;
     onApply: (job: Job) => void;
+    onViewDetails: (job: Job) => void;
     isSaved: boolean;
     onToggleSave: (jobId: string, e?: React.MouseEvent) => void;
 }) {
@@ -318,15 +448,26 @@ function CompactJobCard({ job, onApply, isSaved, onToggleSave }: {
                                 )}
                             </div>
                             <p className="text-xs text-slate-500">
-                                {job.created_at ? (() => {
-                                    const date = new Date(job.created_at)
+                                {(job.posted_date || job.created_at) ? (() => {
+                                    const date = new Date(job.posted_date || job.created_at!)
                                     const now = new Date()
-                                    const diffDays = Math.ceil(Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
-                                    if (diffDays === 0) return 'Today'
-                                    if (diffDays === 1) return '1d'
-                                    if (diffDays < 7) return `${diffDays}d`
-                                    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w`
-                                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                                    const diffMs = now.getTime() - date.getTime()
+                                    const diffMins = Math.floor(diffMs / (1000 * 60))
+                                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+                                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+                                    const diffWeeks = Math.floor(diffDays / 7)
+                                    const diffMonths = Math.floor(diffDays / 30)
+
+                                    if (diffMins < 1) return 'Just now'
+                                    if (diffMins < 60) return `${diffMins}m ago`
+                                    if (diffHours < 24) return `${diffHours}h ago`
+                                    if (diffDays === 1) return '1 day ago'
+                                    if (diffDays < 7) return `${diffDays} days ago`
+                                    if (diffWeeks === 1) return '1 week ago'
+                                    if (diffWeeks < 4) return `${diffWeeks} weeks ago`
+                                    if (diffMonths === 1) return '1 month ago'
+                                    if (diffMonths < 12) return `${diffMonths} months ago`
+                                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                                 })() : 'Recent'} • {job.applicants_count || 0} applicants
                             </p>
                         </div>
@@ -402,23 +543,32 @@ function CompactJobCard({ job, onApply, isSaved, onToggleSave }: {
             </CardContent>
 
             {/* Compact Footer */}
-            <CardFooter className="border-t border-slate-100 pt-3 pb-3 px-5 flex items-center justify-between">
+            <CardFooter className="border-t border-slate-100 pt-3 pb-3 px-5 flex items-center justify-between gap-2">
                 <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="text-slate-600 hover:text-slate-900 h-8 px-3"
+                    onClick={() => onViewDetails(job)}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 h-8 px-4 font-medium"
                 >
-                    <Share2 className="w-3.5 h-3.5 mr-1.5" />
-                    Share
+                    View Details
                 </Button>
-                <Button
-                    onClick={() => onApply(job)}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-5 font-semibold"
-                >
-                    Apply Now
-                    <ArrowUpRight className="w-3.5 h-3.5 ml-1.5" />
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-600 hover:text-slate-900 h-8 px-3"
+                    >
+                        <Share2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                        onClick={() => onApply(job)}
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white h-8 px-5 font-semibold"
+                    >
+                        Apply Now
+                        <ArrowUpRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Button>
+                </div>
             </CardFooter>
         </Card>
     )

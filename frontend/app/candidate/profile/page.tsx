@@ -1,425 +1,558 @@
 ﻿"use client"
 
-import { useEffect, useMemo, useState } from "react"
-import type { ChangeEvent } from "react"
+import { useEffect, useState } from "react"
+import { GeoapifyPlacesInput } from "@/components/ui/GooglePlacesInput"
 import {
-  Calendar,
-  Globe,
-  Linkedin,
-  Github,
-  Loader2,
   Mail,
   MapPin,
   Phone,
-  Sparkles,
-  Target,
-  Briefcase,
-  GraduationCap,
-  Code,
-  Eye,
+  Loader2,
+  Save,
   Camera,
-  ExternalLink,
-  ChevronRight,
-  Trophy,
-  Edit,
+  Lock,
+  User,
+  Eye,
+  EyeOff,
 } from "lucide-react"
 
 import { useAuth } from "@/contexts/auth-context"
 import CandidateLayout from "@/layouts/CandidateLayout"
-import { getUserResume } from "@/lib/api/resume"
-import { getDashboardStats } from "@/lib/api/dashboard"
-import type { ResumeData } from "@/components/resume"
+import { supabase } from "@/lib/supabaseClient"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
-
-interface ProfileStats {
-  applicationsSubmitted: number
-  interviewsScheduled: number
-  profileViews: number
-  profileScore: number
-}
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
+import toast from "react-hot-toast"
 
 export default function CandidateProfilePage() {
   const { user, isLoading: authLoading } = useAuth()
 
-  const [resumeData, setResumeData] = useState<ResumeData | null>(null)
-  const [profileCompletion, setProfileCompletion] = useState<number>(0)
-  const [stats, setStats] = useState<ProfileStats | null>(null)
+  const [fullName, setFullName] = useState("")
+  const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
+  const [location, setLocation] = useState("")
+  const [locationSuggestions, setLocationSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [changingPassword, setChangingPassword] = useState(false)
+  const [isGoogleUser, setIsGoogleUser] = useState(false)
+
+  // Comprehensive cities list for autocomplete
+  const popularCities = [
+    // USA
+    "New York, NY, USA",
+    "Los Angeles, CA, USA",
+    "Chicago, IL, USA",
+    "Houston, TX, USA",
+    "Phoenix, AZ, USA",
+    "Philadelphia, PA, USA",
+    "San Antonio, TX, USA",
+    "San Diego, CA, USA",
+    "Dallas, TX, USA",
+    "San Jose, CA, USA",
+    "Austin, TX, USA",
+    "Jacksonville, FL, USA",
+    "Fort Worth, TX, USA",
+    "Columbus, OH, USA",
+    "San Francisco, CA, USA",
+    "Charlotte, NC, USA",
+    "Indianapolis, IN, USA",
+    "Seattle, WA, USA",
+    "Denver, CO, USA",
+    "Boston, MA, USA",
+    "Washington, DC, USA",
+    "Nashville, TN, USA",
+    "Detroit, MI, USA",
+    "Portland, OR, USA",
+    "Las Vegas, NV, USA",
+    "Miami, FL, USA",
+    "Atlanta, GA, USA",
+
+    // UK
+    "London, UK",
+    "Manchester, UK",
+    "Birmingham, UK",
+    "Leeds, UK",
+    "Glasgow, UK",
+    "Edinburgh, UK",
+    "Liverpool, UK",
+    "Bristol, UK",
+
+    // Canada
+    "Toronto, ON, Canada",
+    "Vancouver, BC, Canada",
+    "Montreal, QC, Canada",
+    "Calgary, AB, Canada",
+    "Ottawa, ON, Canada",
+    "Edmonton, AB, Canada",
+
+    // Europe
+    "Paris, France",
+    "Berlin, Germany",
+    "Madrid, Spain",
+    "Rome, Italy",
+    "Amsterdam, Netherlands",
+    "Brussels, Belgium",
+    "Vienna, Austria",
+    "Stockholm, Sweden",
+    "Copenhagen, Denmark",
+    "Dublin, Ireland",
+    "Zurich, Switzerland",
+    "Barcelona, Spain",
+    "Munich, Germany",
+    "Milan, Italy",
+
+    // Asia
+    "Tokyo, Japan",
+    "Singapore",
+    "Hong Kong",
+    "Seoul, South Korea",
+    "Shanghai, China",
+    "Beijing, China",
+    "Dubai, UAE",
+    "Mumbai, India",
+    "Bangalore, India",
+    "Delhi, India",
+    "Bangkok, Thailand",
+    "Kuala Lumpur, Malaysia",
+    "Manila, Philippines",
+    "Jakarta, Indonesia",
+
+    // Australia & NZ
+    "Sydney, Australia",
+    "Melbourne, Australia",
+    "Brisbane, Australia",
+    "Perth, Australia",
+    "Auckland, New Zealand",
+    "Wellington, New Zealand",
+
+    // Remote
+    "Remote",
+    "Remote - USA",
+    "Remote - Europe",
+    "Remote - Worldwide",
+  ]
 
   useEffect(() => {
-    const load = async () => {
+    const loadProfile = async () => {
       if (!user) return
+
       try {
         setLoading(true)
-        setError(null)
 
+        // Check if user signed in with Google
+        const { data: { session } } = await supabase.auth.getSession()
+        const provider = session?.user?.app_metadata?.provider
+        setIsGoogleUser(provider === 'google')
+
+        // Fetch profile from backend API
         const token = localStorage.getItem("access_token")
-        if (!token) {
-          setError("Please sign in to view your profile.")
-          return
-        }
+        if (token) {
+          try {
+            const response = await fetch("/api/candidate/settings/profile", {
+              headers: {
+                "Authorization": `Bearer ${token}`,
+              },
+            })
 
-        const [resumeRes, statsRes] = await Promise.all([
-          getUserResume(token),
-          getDashboardStats(token),
-        ])
-
-        if (resumeRes?.resume?.resumeData) {
-          const apiData = resumeRes.resume.resumeData as ResumeData
-          const mapped: ResumeData = {
-            personalInfo: {
-              fullName: apiData.personalInfo?.fullName || user.full_name || "",
-              email: apiData.personalInfo?.email || user.email || "",
-              phone: apiData.personalInfo?.phone || "",
-              location: apiData.personalInfo?.location || "",
-              website: apiData.personalInfo?.website || "",
-              linkedin: apiData.personalInfo?.linkedin || "",
-              github: apiData.personalInfo?.github || "",
-              summary: apiData.personalInfo?.summary || "",
-            },
-            education: Array.isArray(apiData.education) ? apiData.education : [],
-            experience: Array.isArray(apiData.experience) ? apiData.experience : [],
-            projects: Array.isArray(apiData.projects) ? apiData.projects : [],
-            skills: Array.isArray(apiData.skills) ? apiData.skills : [],
-            certificates: Array.isArray(apiData.certificates) ? apiData.certificates : [],
+            if (response.ok) {
+              const data = await response.json()
+              setFullName(data.full_name || "")
+              setEmail(data.email || "")
+              setPhone(data.phone || "")
+              setLocation(data.location || "")
+            } else {
+              // Fallback to user object
+              setFullName(user.full_name || "")
+              setEmail(user.email || "")
+              setPhone(user.phone || "")
+              setLocation(user.location || "")
+            }
+          } catch (err) {
+            // Fallback to user object
+            setFullName(user.full_name || "")
+            setEmail(user.email || "")
+            setPhone(user.phone || "")
+            setLocation(user.location || "")
           }
-          setResumeData(mapped)
-
-          const sections = {
-            personalInfo:
-              !!mapped.personalInfo.fullName &&
-              !!mapped.personalInfo.email &&
-              !!mapped.personalInfo.phone &&
-              !!mapped.personalInfo.location,
-            summary: !!mapped.personalInfo.summary,
-            experience: mapped.experience.length > 0,
-            education: mapped.education.length > 0,
-            skills: mapped.skills.length > 0,
-            projects: mapped.projects.length > 0,
-            certificates: mapped.certificates.length > 0,
-          }
-          const keys = Object.keys(sections) as (keyof typeof sections)[]
-          const completed = keys.filter((k) => sections[k]).length
-          setProfileCompletion(Math.round((completed / keys.length) * 100))
         } else {
-          const base: ResumeData = {
-            personalInfo: {
-              fullName: user.full_name || "",
-              email: user.email || "",
-              phone: "",
-              location: "",
-              website: "",
-              linkedin: "",
-              github: "",
-              summary: "",
-            },
-            education: [],
-            experience: [],
-            projects: [],
-            skills: [],
-            certificates: [],
-          }
-          setResumeData(base)
-          setProfileCompletion(10)
+          // Fallback to user object
+          setFullName(user.full_name || "")
+          setEmail(user.email || "")
+          setPhone(user.phone || "")
+          setLocation(user.location || "")
         }
 
-        if (statsRes) {
-          setStats(statsRes.stats)
-        }
-      } catch (err: any) {
-        console.error("Error loading profile page", err)
-        setError(err?.message || "Failed to load profile.")
+      } catch (error) {
+        console.error("Error loading profile:", error)
+        toast.error("Failed to load profile")
       } finally {
         setLoading(false)
       }
     }
 
-    if (!authLoading && user) {
-      load()
-    }
-  }, [authLoading, user])
+    loadProfile()
+  }, [user])
 
-  if (authLoading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-        <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
-      </div>
-    )
+  const handleLocationChange = (value: string) => {
+    setLocation(value)
+
+    if (value.length > 0) {
+      const filtered = popularCities.filter(city =>
+        city.toLowerCase().includes(value.toLowerCase())
+      )
+      setLocationSuggestions(filtered)
+      setShowSuggestions(true)
+    } else {
+      setLocationSuggestions([])
+      setShowSuggestions(false)
+    }
   }
 
-  if (loading || !resumeData) {
+  const handleSelectLocation = (city: string) => {
+    setLocation(city)
+    setShowSuggestions(false)
+  }
+
+  const handleSaveProfile = async () => {
+    try {
+      setSaving(true)
+
+      const token = localStorage.getItem("access_token")
+      if (!token) throw new Error("Not authenticated")
+
+      // Use the correct API endpoint with proper field names
+      const response = await fetch("/api/candidate/settings/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          full_name: fullName,
+          email: email, // Required by backend schema
+          phone: phone,
+          location: location,
+          links: {
+            portfolio: null,
+            linkedin: null,
+            github: null,
+          }
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.detail || "Failed to update profile")
+      }
+
+      // Reload profile to show updated values
+      const updatedResponse = await fetch("/api/candidate/settings/profile", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      })
+
+      if (updatedResponse.ok) {
+        const data = await updatedResponse.json()
+        setFullName(data.full_name || "")
+        setEmail(data.email || "")
+        setPhone(data.phone || "")
+        setLocation(data.location || "")
+      }
+
+      toast.success("Profile updated successfully!")
+    } catch (error: any) {
+      console.error("Error saving profile:", error)
+      toast.error(error.message || "Failed to save profile")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error("New passwords don't match")
+      return
+    }
+
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters")
+      return
+    }
+
+    try {
+      setChangingPassword(true)
+
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+
+      if (error) throw error
+
+      toast.success("Password changed successfully!")
+      setCurrentPassword("")
+      setNewPassword("")
+      setConfirmPassword("")
+    } catch (error: any) {
+      console.error("Error changing password:", error)
+      toast.error(error.message || "Failed to change password")
+    } finally {
+      setChangingPassword(false)
+    }
+  }
+
+  if (authLoading || !user || loading) {
     return (
       <CandidateLayout>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-          <div className="max-w-7xl mx-auto space-y-8">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+          <AnimatedBackground />
+          <div className="max-w-3xl mx-auto space-y-6 relative z-10">
             <Skeleton className="h-32 w-full rounded-xl" />
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <Skeleton className="h-96 w-full rounded-xl" />
-              <Skeleton className="h-full w-full rounded-xl lg:col-span-2" />
-            </div>
+            <Skeleton className="h-96 w-full rounded-xl" />
           </div>
         </div>
       </CandidateLayout>
     )
   }
 
-  const { personalInfo, skills, experience, education, projects, certificates } = resumeData
-
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+        <AnimatedBackground />
+        <div className="max-w-3xl mx-auto space-y-6 relative z-10">
 
-          {/* Header Card */}
-          <Card className="border-0 shadow-lg bg-white">
-            <CardContent className="p-8">
-              <div className="flex flex-col md:flex-row gap-8 items-start">
-                <div className="flex-shrink-0">
-                  <Avatar className="w-24 h-24 border-4 border-blue-100 shadow-lg">
-                    <AvatarImage src="" />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-3xl font-bold">
-                      {personalInfo.fullName?.split(' ').map(n => n[0]).join('') || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Profile Settings</h1>
+            <p className="text-slate-600">Manage your account information and settings</p>
+          </div>
+
+          {/* Profile Information Card */}
+          <Card className="border-0 shadow-xl bg-white">
+            <CardHeader className="border-b border-slate-100">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <User className="w-5 h-5 text-blue-600" />
+                Personal Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+
+              {/* Avatar */}
+              <div className="flex items-center gap-6">
+                <Avatar className="w-24 h-24 border-4 border-blue-100 shadow-lg">
+                  <AvatarImage src="" />
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white text-3xl font-bold">
+                    {fullName?.split(' ').map(n => n[0]).join('') || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <Button variant="outline" className="mb-2" disabled>
+                    <Camera className="w-4 h-4 mr-2" />
+                    Upload Photo
+                  </Button>
+                  <p className="text-xs text-slate-500">JPG, PNG or GIF. Max 2MB.</p>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div>
-                      <h1 className="text-3xl font-bold text-slate-900 mb-2">
-                        {personalInfo.fullName || "Your Profile"}
-                      </h1>
-                      {personalInfo.summary && (
-                        <p className="text-slate-600 max-w-2xl">
-                          {personalInfo.summary}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      onClick={() => window.location.href = '/candidate/resume'}
-                      className="bg-blue-600 hover:bg-blue-700"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  </div>
-                  <div className="flex flex-wrap gap-4 text-sm text-slate-600">
-                    {personalInfo.email && (
-                      <span className="flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        {personalInfo.email}
-                      </span>
-                    )}
-                    {personalInfo.phone && (
-                      <span className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        {personalInfo.phone}
-                      </span>
-                    )}
-                    {personalInfo.location && (
-                      <span className="flex items-center gap-2">
-                        <MapPin className="w-4 h-4" />
-                        {personalInfo.location}
-                      </span>
-                    )}
-                  </div>
-                </div>
+              </div>
+
+              {/* Full Name */}
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="h-11"
+                />
+              </div>
+
+              {/* Email (Read-only) */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  disabled
+                  className="h-11 bg-slate-50 cursor-not-allowed"
+                />
+                <p className="text-xs text-slate-500">Email cannot be changed</p>
+              </div>
+
+              {/* Phone */}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Enter your phone number"
+                  className="h-11"
+                />
+              </div>
+
+              {/* Location with Google Places Autocomplete */}
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <GeoapifyPlacesInput
+                  value={location}
+                  onChange={setLocation}
+                  placeholder="City, Country"
+                />
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-4">
+                <Button
+                  onClick={handleSaveProfile}
+                  disabled={saving}
+                  className="bg-blue-600 hover:bg-blue-700 h-11 px-8"
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Changes
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Stats & Profile Strength */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-            {stats && (
-              <>
-                <StatCard icon={Eye} label="Profile Views" value={stats.profileViews} color="blue" />
-                <StatCard icon={Briefcase} label="Applications" value={stats.applicationsSubmitted} color="emerald" />
-                <StatCard icon={Calendar} label="Interviews" value={stats.interviewsScheduled} color="purple" />
-                <StatCard icon={Target} label="Profile Score" value={`${stats.profileScore}%`} color="amber" />
-              </>
-            )}
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between mb-2">
-                  <Target className="w-5 h-5" />
-                  <span className="text-2xl font-bold">{profileCompletion}%</span>
+          {/* Change Password Card */}
+          <Card className="border-0 shadow-xl bg-white">
+            <CardHeader className="border-b border-slate-100">
+              <CardTitle className="text-xl font-bold flex items-center gap-2">
+                <Lock className="w-5 h-5 text-blue-600" />
+                Change Password
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+
+              {isGoogleUser && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-sm text-blue-800">
+                    You signed in with Google. Password change is not available for Google accounts.
+                  </p>
                 </div>
-                <p className="text-sm font-medium text-white/90">Profile Complete</p>
-                <Progress value={profileCompletion} className="h-2 mt-3 bg-white/20" />
-              </CardContent>
-            </Card>
-          </div>
+              )}
 
-          {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Current Password */}
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <div className="relative">
+                  <Input
+                    id="currentPassword"
+                    type={showCurrentPassword ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    disabled={isGoogleUser}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    disabled={isGoogleUser}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-            {/* Left Column */}
-            <div className="space-y-8">
-              {/* Social Links */}
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader className="border-b border-slate-100 pb-4">
-                  <CardTitle className="text-lg font-bold">Connect</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 space-y-3">
-                  {personalInfo.linkedin && (
-                    <SocialLink icon={Linkedin} label="LinkedIn" url={personalInfo.linkedin} />
-                  )}
-                  {personalInfo.github && (
-                    <SocialLink icon={Github} label="GitHub" url={personalInfo.github} />
-                  )}
-                  {personalInfo.website && (
-                    <SocialLink icon={Globe} label="Website" url={personalInfo.website} />
-                  )}
-                  {!personalInfo.linkedin && !personalInfo.github && !personalInfo.website && (
-                    <p className="text-sm text-slate-500 text-center py-4">No social links added</p>
-                  )}
-                </CardContent>
-              </Card>
+              {/* New Password */}
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    disabled={isGoogleUser}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    disabled={isGoogleUser}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-              {/* Skills */}
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader className="border-b border-slate-100 pb-4">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Code className="w-5 h-5" />
-                    Skills
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {skills && skills.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {skills.map((skill, idx) => (
-                        <Badge key={idx} variant="outline" className="bg-slate-50 border-slate-200">
-                          {skill.name}
-                        </Badge>
-                      ))}
-                    </div>
+              {/* Confirm Password */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    disabled={isGoogleUser}
+                    className="h-11 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    disabled={isGoogleUser}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Change Password Button */}
+              <div className="pt-4">
+                <Button
+                  onClick={handleChangePassword}
+                  disabled={isGoogleUser || changingPassword || !newPassword || !confirmPassword}
+                  className="bg-blue-600 hover:bg-blue-700 h-11 px-8"
+                >
+                  {changingPassword ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Changing...
+                    </>
                   ) : (
-                    <p className="text-sm text-slate-500 text-center py-4">No skills added</p>
+                    <>
+                      <Lock className="w-4 h-4 mr-2" />
+                      Change Password
+                    </>
                   )}
-                </CardContent>
-              </Card>
-            </div>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Right Column */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Experience */}
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader className="border-b border-slate-100 pb-4">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Briefcase className="w-5 h-5" />
-                    Work Experience
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {experience && experience.length > 0 ? (
-                    <div className="space-y-6">
-                      {experience.map((exp) => (
-                        <div key={exp.id} className="border-l-2 border-blue-200 pl-4">
-                          <h4 className="font-semibold text-slate-900">{exp.position}</h4>
-                          <p className="text-sm text-blue-600 font-medium">{exp.company}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {exp.startDate} - {exp.endDate || (exp.current ? 'Present' : '')}
-                          </p>
-                          {exp.description && (
-                            <p className="text-sm text-slate-600 mt-2">{exp.description}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 text-center py-8">No experience added</p>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Education */}
-              <Card className="border-0 shadow-lg bg-white">
-                <CardHeader className="border-b border-slate-100 pb-4">
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    Education
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  {education && education.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {education.map((edu) => (
-                        <div key={edu.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                          <h4 className="font-semibold text-slate-900">{edu.degree}</h4>
-                          <p className="text-sm text-blue-600 font-medium">{edu.institution}</p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {edu.startDate} - {edu.graduationYear || (edu.current ? 'Present' : '')}
-                          </p>
-                          {edu.gpa && (
-                            <Badge className="mt-2 bg-amber-100 text-amber-700 border-amber-200">
-                              GPA: {edu.gpa}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-slate-500 text-center py-8">No education added</p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
         </div>
       </div>
-    </CandidateLayout >
+    </CandidateLayout>
   )
-}
-
-function StatCard({ icon: Icon, label, value, color }: {
-  icon: any;
-  label: string;
-  value: number | string;
-  color: 'blue' | 'emerald' | 'purple' | 'amber';
-}) {
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    emerald: 'from-emerald-500 to-emerald-600',
-    purple: 'from-purple-500 to-purple-600',
-    amber: 'from-amber-500 to-amber-600',
-  };
-
-  return (
-    <Card className="border-0 shadow-lg bg-white">
-      <CardContent className="p-6">
-        <div className={cn(
-          "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg mb-4",
-          colorClasses[color]
-        )}>
-          <Icon className="w-6 h-6" />
-        </div>
-        <p className="text-2xl font-bold text-slate-900 mb-1">{value}</p>
-        <p className="text-sm text-slate-600 font-medium">{label}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function SocialLink({ icon: Icon, label, url }: { icon: any; label: string; url: string }) {
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noreferrer"
-      className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-all group"
-    >
-      <div className="flex items-center gap-3">
-        <Icon className="w-5 h-5 text-slate-400 group-hover:text-blue-600 transition-colors" />
-        <span className="text-sm font-medium text-slate-700 group-hover:text-slate-900">{label}</span>
-      </div>
-      <ExternalLink className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
-    </a>
-  );
 }

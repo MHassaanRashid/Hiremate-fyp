@@ -8,8 +8,9 @@ export interface Job {
     job_type: string;
     salary_range?: string;
     description?: string;
-    requirements?: string[];
+    requirements?: string;
     required_skills?: string[];
+    benefits?: string;
     posted_date?: string;
     created_at?: string;
     logo_url?: string;
@@ -31,7 +32,11 @@ export const getJobs = async (token: string, search?: string, location?: string,
     });
 
     if (!res.ok) throw new Error("Failed to fetch jobs");
-    return res.json();
+    const data = await res.json();
+    console.log("Raw API Response:", data);
+    console.log("First job from API:", data[0]);
+    console.log("First job applicants_count from API:", data[0]?.applicants_count);
+    return data;
 };
 
 export const getJobDetails = async (token: string, id: string) => {

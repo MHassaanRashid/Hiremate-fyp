@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import CandidateLayout from "@/layouts/CandidateLayout"
 import { cn } from "@/lib/utils"
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 
 interface Interview {
     id: string
@@ -81,8 +82,9 @@ export default function CandidateInterviewsPage() {
     if (authLoading || loading) {
         return (
             <CandidateLayout>
-                <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-                    <div className="max-w-7xl mx-auto space-y-8">
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+                    <AnimatedBackground />
+                    <div className="max-w-7xl mx-auto space-y-8 relative z-10">
                         <Skeleton className="h-20 w-1/3 rounded-xl" />
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Skeleton className="h-64 w-full rounded-xl" />
@@ -99,8 +101,9 @@ export default function CandidateInterviewsPage() {
 
     return (
         <CandidateLayout>
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-                <div className="max-w-7xl mx-auto space-y-8">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+                <AnimatedBackground />
+                <div className="max-w-7xl mx-auto space-y-8 relative z-10">
 
                     {/* Header */}
                     <div>

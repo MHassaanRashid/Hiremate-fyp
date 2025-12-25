@@ -42,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import toast from "react-hot-toast";
+import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
 
 const STATUS_FILTERS: { label: string; value: string }[] = [
   { label: "All Applications", value: "all" },
@@ -144,19 +145,26 @@ export default function CandidateApplicationsPage() {
 
       const params: any = {
         page,
-        page_size: pageSize,
-        sort_by: "created_at",
-        sort_order: sort === "newest" ? "desc" : "asc",
+        pageSize,
+        sort,
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      if (activeStatus !== "all") params.status = activeStatus;
+      if (activeStatus !== "all") params.status = [activeStatus];
 
+      console.log("Fetching applications with params:", params);
       const data = await getApplications(token, params);
+      console.log("Applications response:", data);
+      console.log("Applications array:", data.items);
+      console.log("Applications length:", data.items?.length);
+      console.log("First application:", data.items?.[0]);
+
       if (isMounted.current) {
-        setApplications(data.applications || []);
-        setTotal(data.total || 0);
-        setTotalPages(data.total_pages || 1);
-        setStatusCounts(data.status_counts || {});
+        setApplications(data.items || []);
+        setTotal(data.meta?.total || 0);
+        setTotalPages(data.meta?.totalPages || 1);
+        setStatusCounts(data.meta?.statusCounts || {});
+
+        console.log("State updated - applications count:", data.items?.length || 0);
       }
     } catch (err: any) {
       console.error("Error fetching applications:", err);
@@ -175,8 +183,9 @@ export default function CandidateApplicationsPage() {
   }, [page, pageSize, debouncedSearch, activeStatus, sort, authLoading, user]);
 
   const stats = useMemo(() => {
-    const totalApps = statusCounts.all || 0;
-    const inProgress = (statusCounts.applied || 0) + (statusCounts.viewed || 0) + (statusCounts.shortlisted || 0);
+    // Calculate total from all status counts (not filtered total)
+    const totalApps = Object.values(statusCounts).reduce((sum, count) => sum + count, 0);
+    const inProgress = (statusCounts.pending || 0) + (statusCounts.applied || 0) + (statusCounts.viewed || 0) + (statusCounts.shortlisted || 0) + (statusCounts.interview || 0);
     const accepted = statusCounts.accepted || 0;
     const rejected = statusCounts.rejected || 0;
     return { totalApps, inProgress, accepted, rejected };
@@ -229,46 +238,90 @@ export default function CandidateApplicationsPage() {
 
   return (
     <CandidateLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8">
-        <div className="max-w-6xl mx-auto space-y-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 p-6 md:p-8 relative">
+        <AnimatedBackground />
+        <div className="max-w-6xl mx-auto space-y-6 relative z-10">
 
-          {/* Header */}
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">
-              My Applications
-            </h1>
-            <p className="text-slate-600">
-              Track and manage your job applications
-            </p>
-          </div>
+          {/* Professional Header Card */}
+          <Card className="border-0 shadow-xl bg-white overflow-hidden">
+            <CardContent className="p-0">
+              {/* Gradient Header */}
+              <div className="bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+                      My Applications
+                    </h1>
+                    <p className="text-blue-100">
+                      Track and manage all your job applications in one place
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleExport}
+                    className="bg-white hover:bg-blue-50 text-blue-600 h-11 px-6 rounded-xl shadow-lg font-semibold self-start md:self-center"
+                  >
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </div>
+              </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              icon={Briefcase}
-              label="Total"
-              value={stats.totalApps}
-              color="blue"
-            />
-            <StatCard
-              icon={TrendingUp}
-              label="In Progress"
-              value={stats.inProgress}
-              color="amber"
-            />
-            <StatCard
-              icon={CheckCircle2}
-              label="Accepted"
-              value={stats.accepted}
-              color="emerald"
-            />
-            <StatCard
-              icon={AlertCircle}
-              label="Rejected"
-              value={stats.rejected}
-              color="rose"
-            />
-          </div>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 border-t border-slate-100">
+                {/* Total Applications */}
+                <div className="p-6 border-r border-b md:border-b-0 border-slate-100 hover:bg-gradient-to-br hover:from-blue-50 hover:to-transparent transition-all group">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+                      <Briefcase className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-slate-900 mb-1">{stats.totalApps}</p>
+                      <p className="text-sm text-slate-600 font-semibold">Total</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* In Progress */}
+                <div className="p-6 border-r md:border-r-0 lg:border-r border-slate-100 hover:bg-gradient-to-br hover:from-amber-50 hover:to-transparent transition-all group">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform">
+                      <TrendingUp className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-slate-900 mb-1">{stats.inProgress}</p>
+                      <p className="text-sm text-slate-600 font-semibold">In Progress</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Accepted */}
+                <div className="p-6 border-r border-slate-100 hover:bg-gradient-to-br hover:from-emerald-50 hover:to-transparent transition-all group">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-slate-900 mb-1">{stats.accepted}</p>
+                      <p className="text-sm text-slate-600 font-semibold">Accepted</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rejected */}
+                <div className="p-6 hover:bg-gradient-to-br hover:from-rose-50 hover:to-transparent transition-all group">
+                  <div className="flex flex-col items-center text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 flex items-center justify-center text-white shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform">
+                      <AlertCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-slate-900 mb-1">{stats.rejected}</p>
+                      <p className="text-sm text-slate-600 font-semibold">Rejected</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Search & Filters */}
           <Card className="border-0 shadow-lg bg-white">
@@ -281,14 +334,14 @@ export default function CandidateApplicationsPage() {
                       placeholder="Search by job title or company..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 h-10 border-slate-200"
+                      className="pl-10 h-10 border-slate-200 rounded-lg"
                     />
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-10 border-slate-200">
+                      <Button variant="outline" size="sm" className="h-10 border-slate-200 rounded-lg">
                         <Filter className="w-4 h-4 mr-2" />
                         {STATUS_FILTERS.find(f => f.value === activeStatus)?.label || "Filter"}
                         <ChevronDown className="w-4 h-4 ml-2" />
@@ -490,17 +543,17 @@ function ApplicationCard({ application, isSelected, onToggleSelect }: {
             className="mt-1 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
           />
           <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-sm flex-shrink-0">
-            {application.job_title?.charAt(0) || 'J'}
+            {application.jobTitle?.charAt(0) || 'J'}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-4 mb-2">
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors mb-1 line-clamp-1">
-                  {application.job_title}
+                  {application.jobTitle}
                 </h3>
                 <p className="text-sm text-slate-600 flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
-                  {application.company_name}
+                  {application.company}
                 </p>
               </div>
               <Badge className={getStatusBadgeClasses(application.status)}>
@@ -510,12 +563,12 @@ function ApplicationCard({ application, isSelected, onToggleSelect }: {
             <div className="flex items-center gap-4 text-xs text-slate-500">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5" />
-                Applied {formatRelativeDate(application.applied_at)}
+                Applied {formatRelativeDate(application.appliedDate)}
               </span>
-              {application.last_updated && (
+              {application.lastUpdatedAt && (
                 <span className="flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5" />
-                  Updated {formatRelativeDate(application.last_updated)}
+                  Updated {formatRelativeDate(application.lastUpdatedAt)}
                 </span>
               )}
             </div>
