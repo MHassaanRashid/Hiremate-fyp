@@ -648,50 +648,13 @@ export default function CandidateDashboard({
               </CardContent>
             </Card>
           </div>
-
-// Helper Components
-function StatCard({ icon: Icon, label, value, trend, trendUp, color }: {
-  icon: any;
-  label: string;
-  value: number;
-  trend: string;
-  trendUp: boolean;
-  color: 'blue' | 'emerald' | 'purple' | 'amber';
-}) {
-  const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
-    emerald: 'from-emerald-500 to-emerald-600',
-    purple: 'from-purple-500 to-purple-600',
-    amber: 'from-amber-500 to-amber-600',
-  };
-
-  return (
-    <Card className="border-0 shadow-lg bg-white overflow-hidden group hover:shadow-xl transition-all">
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className={cn(
-            "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center text-white shadow-lg transition-transform group-hover:scale-110",
-            colorClasses[color]
-          )}>
-            <Icon className="w-6 h-6" />
-          </div>
-          {trend && (
-            <Badge className={cn(
-              "border-0",
-              trendUp ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-            )}>
-              {trend}
-            </Badge>
-          )}
         </div>
-        <div>
-          <p className="text-3xl font-bold text-slate-900 mb-1">{value}</p>
-          <p className="text-sm text-slate-600 font-medium">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
+
+// Helper Components
 
 function ProfileStrengthItem({ completed, label }: { completed: boolean; label: string }) {
   return (
