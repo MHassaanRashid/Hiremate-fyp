@@ -37,7 +37,7 @@ const sidebarItems = [
   { icon: Home, label: "Dashboard", path: "/candidate" },
   { icon: Search, label: "Find Jobs", path: "/candidate/find-jobs" },
   { icon: Briefcase, label: "Applications", path: "/candidate/applications" },
-  { icon: FileText, label: "Tests", path: "/candidate/tests" },
+  { icon: FileText, label: "AI Quiz", path: "/candidate/quiz" },
   { icon: Calendar, label: "Interviews", path: "/candidate/interviews" },
   { icon: User, label: "Profile", path: "/candidate/profile" },
   { icon: FileText, label: "Resume", path: "/candidate/resume" },

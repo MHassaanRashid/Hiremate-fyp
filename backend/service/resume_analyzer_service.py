@@ -10,19 +10,18 @@ from schema.resume_analyzer_schema import (
 
 # Try to import Gemini AI, but don't fail if not available
 try:
-    import google.generativeai as genai
+    from google import genai
     import os
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-        gemini_model = genai.GenerativeModel('gemini-pro')
+        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
         AI_AVAILABLE = True
     else:
         AI_AVAILABLE = False
-        gemini_model = None
+        gemini_client = None
 except ImportError:
     AI_AVAILABLE = False
-    gemini_model = None
+    gemini_client = None
 
 
 class ResumeAnalyzerService:
@@ -65,7 +64,7 @@ class ResumeAnalyzerService:
         strengths = []
         weaknesses = []
         
-        if include_ai and AI_AVAILABLE and gemini_model:
+        if include_ai and AI_AVAILABLE and gemini_client:
             ai_analysis = ResumeAnalyzerService._analyze_with_ai(resume_data, job_description)
             content_quality_score = ai_analysis.get('content_quality_score', 75)
             ai_suggestions = ai_analysis.get('suggestions', [])
@@ -425,7 +424,7 @@ class ResumeAnalyzerService:
     @staticmethod
     def _analyze_with_ai(resume_data: Dict[str, Any], job_description: Optional[str] = None) -> Dict[str, Any]:
         """Use Gemini AI to analyze resume content quality"""
-        if not AI_AVAILABLE or not gemini_model:
+        if not AI_AVAILABLE or not gemini_client:
             return ResumeAnalyzerService._rule_based_analysis(resume_data)
         
         try:
@@ -463,7 +462,10 @@ Focus on:
 5. Skill presentation
 """
             
-            response = gemini_model.generate_content(prompt)
+            response = gemini_client.models.generate_content(
+                model='gemini-1.5-flash',
+                contents=prompt
+            )
             
             # Parse AI response
             response_text = response.text.strip()

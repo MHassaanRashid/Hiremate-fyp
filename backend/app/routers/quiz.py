@@ -6,14 +6,15 @@ from typing import List
 from datetime import datetime, timedelta
 import uuid
 import json
+from app.services.quiz_service import generate_ai_mcqs
 
-router = APIRouter(prefix="/tests", tags=["tests"])
+router = APIRouter(prefix="/quiz", tags=["Quiz"])
 
 # =====================================================
 # Request/Response Models
 # =====================================================
 
-class CreateTestRequest(BaseModel):
+class CreateQuizRequest(BaseModel):
     language: str
 
 class SubmitAnswerRequest(BaseModel):
@@ -53,8 +54,8 @@ async def get_test_languages():
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/create")
-async def create_test(
-    request: CreateTestRequest,
+async def create_quiz(
+    request: CreateQuizRequest,
     current_user = Depends(get_current_user)
 ):
     """Create a new test session"""
@@ -115,28 +116,34 @@ async def create_test(
         
         supabase_client.table("candidate_tests").insert(test_data).execute()
         
-        # Generate mock questions (7 MCQ + 3 coding)
-        # Insert questions one by one to better handle errors
-        for i in range(7):  # MCQ questions
+        # Update total questions count in test data if we only do MCQs
+        total_qcount = lang_config['default_question_count']
+        
+        # Generate AI Questions (MCQs only for now as per AI Quiz Bot feature)
+        ai_questions = generate_ai_mcqs(
+            topic=lang_config['display_name'],
+            difficulty="intermediate",
+            num_questions=total_qcount
+        )
+        
+        # Insert AI questions
+        for i, q in enumerate(ai_questions):
             question_data = {
                 'test_id': test_id,
                 'question_number': i + 1,
                 'question_type': 'mcq',
-                'question_text': f'Sample MCQ question {i + 1} for {request.language}',
-                'options': ['Option A', 'Option B', 'Option C', 'Option D'],
-                'correct_option': 0
+                'question_text': q['question'],
+                'options': q['options'],
+                'correct_option': q['correct_index']
             }
             supabase_client.table("test_questions").insert(question_data).execute()
         
-        for i in range(3):  # Coding questions
-            question_data = {
-                'test_id': test_id,
-                'question_number': i + 8,
-                'question_type': 'coding',
-                'question_text': f'Write a function to solve problem {i + 1}',
-                'code_template': f'// Write your {request.language} code here'
-            }
-            supabase_client.table("test_questions").insert(question_data).execute()
+        # Update test record with actual question count if it differs
+        if len(ai_questions) != total_qcount:
+            supabase_client.table("candidate_tests").update({
+                'total_questions': len(ai_questions)
+            }).eq("id", test_id).execute()
+            test_data['total_questions'] = len(ai_questions)
         
         return {
             'test_id': test_id,
@@ -165,7 +172,7 @@ async def get_test(
         questions_res = supabase_client.table("test_questions").select("*").eq("test_id", test_id).order("question_number").execute()
         
         return {
-            'test': {
+            'quiz': {
                 'id': test_res.data['id'],
                 'language': test_res.data['language'],
                 'status': test_res.data['status'],
@@ -177,7 +184,7 @@ async def get_test(
                     'id': q['id'],
                     'number': q['question_number'],
                     'type': q['question_type'],
-                    'text': q['question_text'],
+                    'question_text': q['question_text'],
                     'options': q.get('options'),
                     'code_template': q.get('code_template')
                 }
