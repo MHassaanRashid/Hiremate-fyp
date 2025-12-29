@@ -3,11 +3,11 @@ import { TestLanguage, TestSession, TestQuestion, TestReport, TestHistory } from
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
 
 // =====================================================
-// Test Languages
+// Quiz Languages
 // =====================================================
 
-export async function getTestLanguages(token: string): Promise<TestLanguage[]> {
-    const response = await fetch(`${API_URL}/tests/languages`, {
+export async function getQuizLanguages(token: string): Promise<TestLanguage[]> {
+    const response = await fetch(`${API_URL}/quiz/languages`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -15,7 +15,7 @@ export async function getTestLanguages(token: string): Promise<TestLanguage[]> {
     })
 
     if (!response.ok) {
-        throw new Error('Failed to fetch test languages')
+        throw new Error('Failed to fetch quiz languages')
     }
 
     const data = await response.json()
@@ -23,11 +23,11 @@ export async function getTestLanguages(token: string): Promise<TestLanguage[]> {
 }
 
 // =====================================================
-// Test Session Management
+// Quiz Session Management
 // =====================================================
 
-export async function createTest(token: string, language: string): Promise<any> {
-    const response = await fetch(`${API_URL}/tests/create`, {
+export async function createQuiz(token: string, language: string): Promise<any> {
+    const response = await fetch(`${API_URL}/quiz/create`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -38,19 +38,18 @@ export async function createTest(token: string, language: string): Promise<any> 
 
     if (!response.ok) {
         const error = await response.json()
-        // Handle retake policy errors
         if (response.status === 429) {
             const detail = error.detail
-            throw new Error(detail.reason || detail || 'You can only take one test per language per day')
+            throw new Error(detail.reason || detail || 'You can only take one quiz per language per day')
         }
-        throw new Error(error.detail || 'Failed to create test')
+        throw new Error(error.detail || 'Failed to create quiz')
     }
 
     return response.json()
 }
 
-export async function getTest(token: string, testId: string) {
-    const response = await fetch(`${API_URL}/tests/${testId}`, {
+export async function getQuiz(token: string, quizId: string) {
+    const response = await fetch(`${API_URL}/quiz/${quizId}`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -58,7 +57,7 @@ export async function getTest(token: string, testId: string) {
     })
 
     if (!response.ok) {
-        throw new Error('Failed to fetch test')
+        throw new Error('Failed to fetch quiz')
     }
 
     return response.json()
@@ -76,12 +75,12 @@ export interface SubmitAnswerData {
     time_spent_seconds?: number
 }
 
-export async function submitAnswer(
+export async function submitQuizAnswer(
     token: string,
-    testId: string,
+    quizId: string,
     answerData: SubmitAnswerData
 ) {
-    const response = await fetch(`${API_URL}/tests/${testId}/submit-answer`, {
+    const response = await fetch(`${API_URL}/quiz/${quizId}/submit-answer`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -98,11 +97,11 @@ export async function submitAnswer(
 }
 
 // =====================================================
-// Test Completion
+// Quiz Completion
 // =====================================================
 
-export async function completeTest(token: string, testId: string) {
-    const response = await fetch(`${API_URL}/tests/${testId}/complete`, {
+export async function completeQuiz(token: string, quizId: string) {
+    const response = await fetch(`${API_URL}/quiz/${quizId}/complete`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -111,18 +110,18 @@ export async function completeTest(token: string, testId: string) {
     })
 
     if (!response.ok) {
-        throw new Error('Failed to complete test')
+        throw new Error('Failed to complete quiz')
     }
 
     return response.json()
 }
 
 // =====================================================
-// Test Report
+// Quiz Report
 // =====================================================
 
-export async function getTestReport(token: string, testId: string): Promise<TestReport> {
-    const response = await fetch(`${API_URL}/tests/${testId}/report`, {
+export async function getQuizReport(token: string, quizId: string): Promise<TestReport> {
+    const response = await fetch(`${API_URL}/quiz/${quizId}/report`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -130,18 +129,18 @@ export async function getTestReport(token: string, testId: string): Promise<Test
     })
 
     if (!response.ok) {
-        throw new Error('Failed to fetch test report')
+        throw new Error('Failed to fetch quiz report')
     }
 
     return response.json()
 }
 
 // =====================================================
-// Test History
+// Quiz History
 // =====================================================
 
-export async function getTestHistory(token: string): Promise<TestHistory[]> {
-    const response = await fetch(`${API_URL}/tests/history`, {
+export async function getQuizHistory(token: string): Promise<TestHistory[]> {
+    const response = await fetch(`${API_URL}/quiz/history`, {
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -149,7 +148,7 @@ export async function getTestHistory(token: string): Promise<TestHistory[]> {
     })
 
     if (!response.ok) {
-        throw new Error('Failed to fetch test history')
+        throw new Error('Failed to fetch quiz history')
     }
 
     const data = await response.json()

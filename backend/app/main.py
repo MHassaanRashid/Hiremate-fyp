@@ -12,7 +12,9 @@ from app.routers import (
     applications,
     settings,
     jobs,
-    tests,
+    settings,
+    jobs,
+    quiz,
     resume_analyzer_router as resume_analyzer,
 )
 
@@ -34,7 +36,7 @@ app.include_router(resume.router, prefix="/api/resume", tags=["Resume"])
 app.include_router(applications.router, prefix="/api/applications", tags=["Applications"])
 app.include_router(settings.router, prefix="/api/candidate/settings", tags=["Candidate Settings"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
-app.include_router(tests.router, prefix="/api", tags=["Tests"])
+app.include_router(quiz.router, prefix="/api", tags=["Quiz"])
 app.include_router(resume_analyzer.router, prefix="/api/resume-analyzer", tags=["Resume Analyzer"])
 
 # Root endpoint

@@ -636,8 +636,8 @@ export default function CandidateDashboard({
                   />
                   <QuickActionButton
                     icon={Award}
-                    label="Take Skills Test"
-                    onClick={() => router.push('/candidate/tests')}
+                    label="Take AI Quiz"
+                    onClick={() => router.push('/candidate/quiz')}
                   />
                   <QuickActionButton
                     icon={Search}
