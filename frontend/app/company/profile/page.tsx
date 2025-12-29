@@ -102,8 +102,8 @@ export default function RecruiterProfilePage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 p-6 md:p-10 font-sans text-slate-900">
-            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="min-h-screen relative p-6 md:p-10 font-sans text-slate-900">
+            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 relative z-10">
 
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900">My Profile</h1>
@@ -128,7 +128,7 @@ export default function RecruiterProfilePage() {
                         </Alert>
                     )}
 
-                    <Card className="border-none shadow-sm ring-1 ring-slate-200 bg-white">
+                    <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-xl ring-1 ring-white/50">
                         <CardHeader className="border-b border-slate-100 pb-4">
                             <div className="flex items-center gap-2">
                                 <User className="h-5 w-5 text-blue-600" />
