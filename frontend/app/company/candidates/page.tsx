@@ -94,9 +94,6 @@ export default function CandidatesPage() {
             const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
             const token = localStorage.getItem("access_token")
 
-            // We use the dashboard's "recent applications" endpoint or a dedicated one if it existed.
-            // For now, let's fetch from the generic company dashboard and then filter, or better, 
-            // many company applications across all jobs.
             const res = await fetch(`${backend}/jobs/company/all-applications`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
@@ -105,7 +102,6 @@ export default function CandidatesPage() {
                 const data = await res.json()
                 setApplications(data)
             } else {
-                // Fallback if the endpoint is not ready
                 console.warn("Using empty list as fallback")
                 setApplications([])
             }
@@ -160,8 +156,8 @@ export default function CandidatesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50/50 p-6 md:p-10 font-sans text-slate-900">
-            <div className="max-w-7xl mx-auto space-y-8">
+        <div className="min-h-screen relative p-6 md:p-10 font-sans text-slate-900">
+            <div className="max-w-7xl mx-auto space-y-8 relative z-10">
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -169,11 +165,11 @@ export default function CandidatesPage() {
                         <p className="text-slate-500 mt-2">Manage applications across all your active job postings.</p>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
                             <Input
                                 placeholder="Search by name or job..."
-                                className="pl-9 w-64 border-slate-200 bg-white shadow-sm"
+                                className="pl-9 w-64 border-slate-200 bg-white/80 backdrop-blur-sm shadow-sm focus:border-blue-500 rounded-xl"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                             />
@@ -181,30 +177,32 @@ export default function CandidatesPage() {
                     </div>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200">
-                        <TabsList className="bg-transparent h-12 rounded-none p-0 gap-8">
-                            <TabsTrigger value="all" className="h-full px-2 rounded-none bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none font-semibold transition-all">
-                                All Candidates <Badge className="ml-2 bg-slate-100 text-slate-600 hover:bg-slate-100">{applications.length}</Badge>
-                            </TabsTrigger>
-                            <TabsTrigger value="pending" className="h-full px-2 rounded-none bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none font-semibold transition-all text-slate-500">
-                                Pending
-                            </TabsTrigger>
-                            <TabsTrigger value="shortlisted" className="h-full px-2 rounded-none bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none font-semibold transition-all text-slate-500">
-                                Shortlisted
-                            </TabsTrigger>
-                            <TabsTrigger value="rejected" className="h-full px-2 rounded-none bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none font-semibold transition-all text-slate-500">
-                                Rejected
-                            </TabsTrigger>
-                        </TabsList>
-                    </div>
+                <div className="bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-sm p-4">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-2 mb-4">
+                            <TabsList className="bg-slate-100/50 p-1 rounded-xl h-auto">
+                                {['all', 'pending', 'shortlisted', 'rejected'].map(tab => (
+                                    <TabsTrigger
+                                        key={tab}
+                                        value={tab}
+                                        className="rounded-lg px-4 py-2 text-sm font-medium capitalize data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm transition-all"
+                                    >
+                                        {tab}
+                                        {tab === 'all' && (
+                                            <Badge className="ml-2 bg-slate-200 text-slate-700 hover:bg-slate-300 border-none h-5 px-1.5 min-w-[1.25rem]">
+                                                {applications.length}
+                                            </Badge>
+                                        )}
+                                    </TabsTrigger>
+                                ))}
+                            </TabsList>
+                        </div>
 
-                    <TabsContent value={activeTab} className="mt-6">
-                        <Card className="border-none shadow-sm bg-white overflow-hidden">
-                            <CardContent className="p-0">
+                        <TabsContent value={activeTab} className="mt-0">
+                            <div className="rounded-xl overflow-hidden border border-slate-100">
                                 {filteredApplications.length === 0 ? (
-                                    <div className="p-20 text-center flex flex-col items-center justify-center">
-                                        <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-6">
+                                    <div className="p-20 text-center flex flex-col items-center justify-center bg-white/50">
+                                        <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-6 animate-in zoom-in-50 duration-300">
                                             <Users className="h-10 w-10 text-blue-500 opacity-50" />
                                         </div>
                                         <h3 className="text-xl font-bold text-slate-900">No candidates found</h3>
@@ -214,23 +212,23 @@ export default function CandidatesPage() {
                                     </div>
                                 ) : (
                                     <Table>
-                                        <TableHeader className="bg-slate-50/50">
-                                            <TableRow className="hover:bg-transparent">
-                                                <TableHead className="py-4">Candidate</TableHead>
-                                                <TableHead>Job Role</TableHead>
-                                                <TableHead>Applied Date</TableHead>
-                                                <TableHead>Match Score</TableHead>
-                                                <TableHead>Status</TableHead>
-                                                <TableHead className="text-right">Action</TableHead>
+                                        <TableHeader className="bg-slate-50/80">
+                                            <TableRow className="hover:bg-transparent border-slate-100">
+                                                <TableHead className="py-4 font-semibold text-slate-600">Candidate</TableHead>
+                                                <TableHead className="font-semibold text-slate-600">Job Role</TableHead>
+                                                <TableHead className="font-semibold text-slate-600">Applied Date</TableHead>
+                                                <TableHead className="font-semibold text-slate-600">Match Score</TableHead>
+                                                <TableHead className="font-semibold text-slate-600">Status</TableHead>
+                                                <TableHead className="text-right font-semibold text-slate-600">Action</TableHead>
                                             </TableRow>
                                         </TableHeader>
-                                        <TableBody>
+                                        <TableBody className="bg-white/50">
                                             {filteredApplications.map((app) => (
-                                                <TableRow key={app.id} className="hover:bg-blue-50/20 transition-all cursor-pointer" onClick={() => setSelectedCandidate(app)}>
+                                                <TableRow key={app.id} className="hover:bg-blue-50/30 transition-all cursor-pointer border-slate-100" onClick={() => setSelectedCandidate(app)}>
                                                     <TableCell className="py-4">
                                                         <div className="flex items-center gap-3">
-                                                            <Avatar className="h-10 w-10 ring-2 ring-slate-100">
-                                                                <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
+                                                            <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                                                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold">
                                                                     {app.candidate_name?.charAt(0) || "C"}
                                                                 </AvatarFallback>
                                                             </Avatar>
@@ -251,10 +249,10 @@ export default function CandidatesPage() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
-                                                            <div className="h-2 w-12 bg-slate-100 rounded-full overflow-hidden">
+                                                            <div className="h-2 w-16 bg-slate-100 rounded-full overflow-hidden">
                                                                 <div
-                                                                    className={`h-full rounded-full ${(app.ai_score || 0) > 70 ? 'bg-emerald-500' :
-                                                                            (app.ai_score || 0) > 40 ? 'bg-amber-500' : 'bg-red-500'
+                                                                    className={`h-full rounded-full transition-all duration-500 ${(app.ai_score || 0) > 70 ? 'bg-emerald-500' :
+                                                                        (app.ai_score || 0) > 40 ? 'bg-amber-500' : 'bg-red-500'
                                                                         }`}
                                                                     style={{ width: `${app.ai_score || 0}%` }}
                                                                 ></div>
@@ -264,10 +262,10 @@ export default function CandidatesPage() {
                                                     </TableCell>
                                                     <TableCell>
                                                         <Badge variant="outline" className={`
-                                                            capitalize px-2 py-0.5 border-none font-bold
-                                                            ${app.status === 'pending' ? 'bg-amber-50 text-amber-700' : ''}
-                                                            ${app.status === 'shortlisted' ? 'bg-emerald-50 text-emerald-700' : ''}
-                                                            ${app.status === 'rejected' ? 'bg-rose-50 text-rose-700' : ''}
+                                                            capitalize px-2.5 py-0.5 border-none font-semibold shadow-sm
+                                                            ${app.status === 'pending' ? 'bg-amber-100 text-amber-700' : ''}
+                                                            ${app.status === 'shortlisted' ? 'bg-emerald-100 text-emerald-700' : ''}
+                                                            ${app.status === 'rejected' ? 'bg-rose-100 text-rose-700' : ''}
                                                         `}>
                                                             {app.status}
                                                         </Badge>
@@ -275,7 +273,7 @@ export default function CandidatesPage() {
                                                     <TableCell className="text-right">
                                                         <DropdownMenu>
                                                             <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg">
                                                                     <MoreHorizontal className="h-4 w-4" />
                                                                 </Button>
                                                             </DropdownMenuTrigger>
@@ -291,7 +289,7 @@ export default function CandidatesPage() {
                                                                     </DropdownMenuItem>
                                                                 )}
                                                                 {app.status !== 'rejected' && (
-                                                                    <DropdownMenuItem className="text-rose-600" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(app.id, 'rejected'); }}>
+                                                                    <DropdownMenuItem className="text-rose-600 focus:text-rose-600 focus:bg-rose-50" onClick={(e) => { e.stopPropagation(); handleStatusUpdate(app.id, 'rejected'); }}>
                                                                         <XCircle className="mr-2 h-4 w-4" /> Reject
                                                                     </DropdownMenuItem>
                                                                 )}
@@ -307,10 +305,10 @@ export default function CandidatesPage() {
                                         </TableBody>
                                     </Table>
                                 )}
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                </Tabs>
+                            </div>
+                        </TabsContent>
+                    </Tabs>
+                </div>
             </div>
 
             {selectedCandidate && (
@@ -321,8 +319,8 @@ export default function CandidatesPage() {
                         ...selectedCandidate,
                         application_id: selectedCandidate.id
                     }}
-                    onShortlist={handleShortlist}
-                    onReject={handleStatusUpdate}
+                    onShortlist={(id) => handleStatusUpdate(id, 'shortlisted')}
+                    onReject={(id) => handleStatusUpdate(id, 'rejected')}
                     jobId={selectedCandidate.job_id}
                 />
             )}
