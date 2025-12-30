@@ -36,7 +36,7 @@ def normalize_role(role: Optional[str]) -> Optional[str]:
     role = role.lower().strip()
     if role == "company":
         return "recruiter"
-    if role in ["candidate", "recruiter", "interviewer"]:
+    if role in ["candidate", "recruiter", "interviewer", "admin"]:
         return role
     return None
 
@@ -117,7 +117,13 @@ async def login(request_data: LoginRequest):
             "password": request_data.password,
         })
     except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        error_msg = str(e)
+        if "Invalid login credentials" in error_msg:
+             raise HTTPException(status_code=401, detail="Invalid login credentials")
+        if "Email not confirmed" in error_msg:
+             raise HTTPException(status_code=400, detail="Email not confirmed")
+        logger.error(f"Login error: {error_msg}")
+        raise HTTPException(status_code=502, detail=error_msg)
 
     parsed = _extract_user_and_session(response)
     user = parsed.get("user")
@@ -126,13 +132,17 @@ async def login(request_data: LoginRequest):
     if not user or not session:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Always fetch authoritative role from profiles table
+    # user_metadata can be stale (e.g. if role was changed in DB manually)
     try:
         profile_res = supabase.table("profiles").select("role, full_name").eq("id", user.id).execute()
         profile = profile_res.data
         role = profile[0]["role"] if profile else "candidate"
         full_name = profile[0]["full_name"] if profile else ""
     except Exception:
-        role = "candidate"
+        # Fallback to metadata only if DB fails completely
+        user_meta = getattr(user, "user_metadata", {}) or {}
+        role = user_meta.get("role") or "candidate"
         full_name = ""
 
     return {
@@ -215,21 +225,17 @@ async def get_user(
     full_name = profile[0]["full_name"]
     final_role = actual_role
 
-    # Optional: Update role if user signed up via OAuth with an intended role
-    # Accept explicit OAuth intent and attempt to update role (log any DB errors).
+    # Only update role when EXPLICITLY requested during OAUTH LOGIN/SIGNUP flows,
+    # NOT on every session validation.
+    # The 'role' query param is usually only present during the initial oauth callback.
     if normalized_role and actual_role == "candidate" and normalized_role != "candidate":
+         # Only update if the user's current role is 'candidate' (default) and they are requesting a new role
         try:
-            resp = supabase.table("profiles").update({"role": normalized_role}).eq("id", user.id).execute()
-            # postgrest client raises on errors, but be defensive and check response
-            resp_error = getattr(resp, "error", None)
-            resp_data = getattr(resp, "data", None)
-            if resp_error:
-                logger.warning(f"Failed to update role for {user.id}: {resp_error}")
-            else:
-                final_role = normalized_role
-                logger.info(f"🔁 Role updated to {final_role}")
+            supabase.table("profiles").update({"role": normalized_role}).eq("id", user.id).execute()
+            final_role = normalized_role
+            logger.info(f"🔁 Role updated to {final_role}")
         except Exception as e:
-            logger.exception("Failed to update profile role")
+            logger.warning(f"Failed to update profile role: {e}")
 
     return {
         "user": {

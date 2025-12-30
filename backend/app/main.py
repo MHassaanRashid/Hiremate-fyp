@@ -16,6 +16,7 @@ from app.routers import (
     jobs,
     quiz,
     resume_analyzer_router as resume_analyzer,
+    admin,
 )
 
 # Initialize FastAPI app
@@ -26,6 +27,7 @@ cors.setup(app)
 
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
+app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(candidate_management.router, prefix="/api/candidate-management", tags=["Candidate Management"])
 app.include_router(candidates.router, prefix="/api/candidates", tags=["Candidates"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])

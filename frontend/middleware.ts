@@ -51,15 +51,27 @@ export async function middleware(request: NextRequest) {
   }
 
   // ✅ Unauthenticated → redirect to role-specific auth page if role cookie exists
-  if (!accessToken && !pathname.startsWith("/auth")) {
+  if (!accessToken && !pathname.startsWith("/auth") && pathname !== "/admin/login") {
     // Check if we have a role cookie from previous session
     const userRole = request.cookies.get("user_role")?.value
     let authRedirect = "/auth/candidate" // Default fallback
+
+    // Context-aware fallback based on URL path
+    if (pathname.startsWith("/admin")) {
+      authRedirect = "/admin/login"
+    } else if (pathname.startsWith("/company")) {
+      authRedirect = "/auth/company"
+    } else if (pathname.startsWith("/interviewer")) {
+      authRedirect = "/auth/interviewer"
+    }
 
     if (userRole === "recruiter") {
       authRedirect = "/auth/company"
     } else if (userRole === "interviewer") {
       authRedirect = "/auth/interviewer"
+    } else if (userRole === "admin") {
+      // If they were an admin, send them back to admin login
+      authRedirect = "/admin/login"
     }
 
     console.log(`No access token, redirecting to ${authRedirect}`)
@@ -86,7 +98,8 @@ export async function middleware(request: NextRequest) {
 
     // 🔹 Map role → new clean paths
     const redirectPath = role === "recruiter" ? "/company" :
-      role === "interviewer" ? "/interviewer" : "/candidate"
+      role === "interviewer" ? "/interviewer" :
+        role === "admin" ? "/admin/dashboard" : "/candidate"
     console.log("Authenticated user, redirecting to:", redirectPath)
 
     const response = NextResponse.redirect(new URL(redirectPath, request.url))
@@ -99,7 +112,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // ✅ Allow dashboards if authenticated
-  if (accessToken && (pathname === "/company" || pathname === "/candidate" || pathname === "/interviewer")) {
+  // ✅ Allow dashboards if authenticated
+  if (accessToken && (pathname.startsWith("/company") || pathname.startsWith("/candidate") || pathname.startsWith("/interviewer") || pathname.startsWith("/admin"))) {
     console.log("Authenticated, allowing access to:", pathname)
     return NextResponse.next()
   }
@@ -114,6 +128,8 @@ export const config = {
     "/candidate",
     "/interviewer",
     "/interviewer/:path*",
+    "/admin",
+    "/admin/:path*",
     "/oauth-callback"
   ],
 }

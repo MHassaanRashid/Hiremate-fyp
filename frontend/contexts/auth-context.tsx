@@ -37,23 +37,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let roleBasedRedirect = "/auth/candidate" // Default fallback
 
     if (!redirectTo) {
-      try {
-        const storedUser = localStorage.getItem("user")
-        if (storedUser) {
-          const userData = JSON.parse(storedUser)
-          const userRole = userData.role
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        if (path.startsWith('/admin')) {
+          roleBasedRedirect = "/admin/login";
+        } else if (path.startsWith('/company')) {
+          roleBasedRedirect = "/auth/company";
+        } else if (path.startsWith('/interviewer')) {
+          roleBasedRedirect = "/auth/interviewer";
+        } else {
+          // Fallback to trying to read role from local storage
+          try {
+            const storedUser = localStorage.getItem("user")
+            if (storedUser) {
+              const userData = JSON.parse(storedUser)
+              const userRole = userData.role
 
-          // Map role to appropriate auth page
-          if (userRole === "recruiter") {
-            roleBasedRedirect = "/auth/company"
-          } else if (userRole === "interviewer") {
-            roleBasedRedirect = "/auth/interviewer"
-          } else {
-            roleBasedRedirect = "/auth/candidate"
+              if (userRole === "recruiter") {
+                roleBasedRedirect = "/auth/company"
+              } else if (userRole === "interviewer") {
+                roleBasedRedirect = "/auth/interviewer"
+              } else if (userRole === "admin") {
+                roleBasedRedirect = "/admin/login"
+              }
+            }
+          } catch (error) {
+            console.log("Could not determine user role, using default redirect")
           }
         }
-      } catch (error) {
-        console.log("Could not determine user role, using default redirect")
       }
     }
 
@@ -172,11 +183,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Login response user data:", data.user)
 
       // Store tokens securely (Secure flag only in production)
+      // Use Lax for SameSite to ensure cookies are sent during top-level navigations (redirects)
+      // Strict can sometimes block cookies on initial redirect flows depending on browser/origin
       const secure = window.location.protocol === 'https:' ? '; Secure' : ''
-      document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Strict${secure}`
-      document.cookie = `refresh_token=${data.refresh_token}; path=/; max-age=604800; SameSite=Strict${secure}`
+      document.cookie = `access_token=${data.access_token}; path=/; max-age=3600; SameSite=Lax${secure}`
+      document.cookie = `refresh_token=${data.refresh_token}; path=/; max-age=604800; SameSite=Lax${secure}`
       // Store user role cookie for session expiration redirects (longer expiry)
-      document.cookie = `user_role=${data.user.role}; path=/; max-age=2592000; SameSite=Strict${secure}`
+      document.cookie = `user_role=${data.user.role}; path=/; max-age=2592000; SameSite=Lax${secure}`
 
       // Store user data
       const userData = {
@@ -195,12 +208,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ? "/company"
         : backendRoleFromResponse === "interviewer"
           ? "/interviewer"
-          : "/candidate"
+          : backendRoleFromResponse === "admin"
+            ? "/admin/dashboard"
+            : "/candidate"
 
       console.log("Redirecting to dashboard:", dashboardPath, "based on role:", backendRoleFromResponse)
 
-      // Use router.push for seamless navigation (no page refresh)
-      router.push(dashboardPath)
+      // Navigate immediately
+      router.replace(dashboardPath)
     } catch (err: any) {
       console.error("Login error:", err.message)
       throw new Error(err.message)
@@ -302,6 +317,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       let dashboard = "/candidate"
       if (data.user.role === "recruiter") dashboard = "/company"
       else if (data.user.role === "interviewer") dashboard = "/interviewer"
+      else if (data.user.role === "admin") dashboard = "/admin/dashboard"
 
       console.log(`🔀 Redirecting to dashboard: ${dashboard} (Role: ${data.user.role})`)
 
