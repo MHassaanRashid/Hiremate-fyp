@@ -24,6 +24,11 @@ class SubmitAnswerRequest(BaseModel):
     answer_text: str = None
     time_spent_seconds: int = 0
 
+class TerminateQuizRequest(BaseModel):
+    reason: str
+    proof: str = None  # Base64 image
+    logs: List[dict] = [] # Proctoring logs
+
 # =====================================================
 # Routes
 # =====================================================
@@ -294,6 +299,94 @@ async def complete_test(
         print(f"Error completing test: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@router.get("/{test_id}/preparation-status")
+async def get_preparation_status(
+    test_id: str,
+    current_user = Depends(get_current_user)
+):
+    """Get quiz preparation status (for pre-quiz readiness page)"""
+    try:
+        # Get test
+        test_res = supabase_client.table("candidate_tests").select("*").eq("id", test_id).eq("candidate_id", current_user.id).single().execute()
+        if not test_res.data:
+            raise HTTPException(status_code=404, detail="Test not found")
+        
+        test = test_res.data
+        
+        # Quiz is ready if status is 'in_progress' and questions exist
+        questions_res = supabase_client.table("test_questions").select("id").eq("test_id", test_id).execute()
+        quiz_ready = test["status"] == "in_progress" and len(questions_res.data or []) > 0
+        
+        return {
+            "quiz_ready": quiz_ready,
+            "test_id": test_id,
+            "language": test.get("language"),
+            "duration_minutes": test.get("duration_minutes", 15),
+            "question_count": len(questions_res.data or [])
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error getting preparation status: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{test_id}/mark-preparation-complete")
+async def mark_preparation_complete(
+    test_id: str,
+    current_user = Depends(get_current_user)
+):
+    """Mark that preparation phase is complete and monitoring is ready"""
+    try:
+        # Note: preparation_completed_at and monitoring_ready_at columns need migration
+        # For now, just verify the test exists and belongs to the user
+        test_res = supabase_client.table("candidate_tests").select("id").eq("id", test_id).eq("candidate_id", current_user.id).single().execute()
+        if not test_res.data:
+            raise HTTPException(status_code=404, detail="Test not found")
+        
+        # TODO: Uncomment after running migration script
+        # supabase_client.table("candidate_tests").update({
+        #     'preparation_completed_at': datetime.utcnow().isoformat(),
+        #     'monitoring_ready_at': datetime.utcnow().isoformat()
+        # }).eq("id", test_id).eq("candidate_id", current_user.id).execute()
+        
+        return {"status": "ok", "message": "Preparation marked as complete"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error marking preparation complete: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/{test_id}/terminate")
+async def terminate_test(
+    test_id: str,
+    request: TerminateQuizRequest,
+    current_user = Depends(get_current_user)
+):
+    """Terminate test due to violation"""
+    try:
+        # Get test
+        test_res = supabase_client.table("candidate_tests").select("*").eq("id", test_id).single().execute()
+        if not test_res.data:
+            raise HTTPException(status_code=404, detail="Test not found")
+        
+        supabase_client.table("candidate_tests").update({
+            'status': 'terminated',
+            'passed': False,
+            'score_percentage': 0.0,
+            'completed_at': datetime.utcnow().isoformat(),
+            'termination_reason': request.reason,
+            'violation_proof': request.proof,
+            'proctoring_logs': request.logs
+        }).eq("id", test_id).execute()
+        
+        return {"status": "terminated", "reason": request.reason}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error terminating test: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{test_id}/report")
 async def get_test_report(
     test_id: str,
@@ -312,11 +405,15 @@ async def get_test_report(
         return {
             'id': test['id'],
             'language': test['language'],
+            'status': test.get('status'),
             'score_percentage': float(test.get('score_percentage', 0)),
             'passed': test.get('passed', False),
             'completed_at': test.get('completed_at'),
             'total_questions': test['total_questions'],
             'correct_answers': test.get('correct_answers', 0),
+            'termination_reason': test.get('termination_reason'),
+            'violation_proof': test.get('violation_proof'),
+            'proctoring_logs': test.get('proctoring_logs') or [],
             'question_results': [
                 {
                     'question_id': ans['question_id'],
