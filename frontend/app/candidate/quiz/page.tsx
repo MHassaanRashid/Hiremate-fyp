@@ -69,31 +69,10 @@ export default function QuizSelectionPage() {
     const [showInstructions, setShowInstructions] = useState(false)
     const [acceptedTerms, setAcceptedTerms] = useState(false)
     const [acceptedAI, setAcceptedAI] = useState(false)
-    const [creating, setCreating] = useState(false)
-    const [generationStep, setGenerationStep] = useState(0)
-
-    const generationSteps = [
-        "Initializing AI engine...",
-        "Analyzing assessment standards...",
-        "Generating technical MCQs...",
-        "Validating question integrity...",
-        "Preparing proctoring environment...",
-        "Finalizing your assessment..."
-    ]
 
     useEffect(() => {
         fetchLanguages()
     }, [])
-
-    useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (creating) {
-            interval = setInterval(() => {
-                setGenerationStep(prev => (prev + 1) % generationSteps.length);
-            }, 2500);
-        }
-        return () => clearInterval(interval);
-    }, [creating]);
 
     const fetchLanguages = async () => {
         try {
@@ -120,32 +99,17 @@ export default function QuizSelectionPage() {
     const handleStartQuiz = async () => {
         if (!selectedLanguage || !acceptedTerms || !acceptedAI) return
 
-        // 1. Camera Access Check
+        // Close modal and redirect IMMEDIATELY for smooth UX
+        setShowInstructions(false)
+        router.push(`/candidate/quiz/prepare?lang=${selectedLanguage.code}`)
+
+        // Check camera permission in background (prepare page will handle this too)
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-            // Close the stream immediately, checks passed
             stream.getTracks().forEach(track => track.stop())
         } catch (error) {
-            console.error("Camera access denied:", error)
-            toast.error("Camera access is required. Please enable permissions in your browser.")
-            return
-        }
-
-        setCreating(true)
-        try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                toast.error("Please log in to start an assessment")
-                return
-            }
-
-            const result = await createQuiz(session.access_token, selectedLanguage.code)
-            toast.success("Assessment ready!")
-            router.push(`/candidate/quiz/${result.test_id}`)
-        } catch (error: any) {
-            console.error("Error creating quiz:", error)
-            toast.error(error.message || "Failed to create quiz")
-            setCreating(false)
+            console.error("Camera access check:", error)
+            // Error will be caught on prepare page when proctoring initializes
         }
     }
 
@@ -156,36 +120,6 @@ export default function QuizSelectionPage() {
     return (
         <CandidateLayout>
             <TooltipProvider>
-                {/* Full Screen Generation Overlay - Simplified & Friendly */}
-                {creating && (
-                    <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
-                        {/* Subtle Background Elements */}
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-50/50 via-white to-white -z-10" />
-
-                        <div className="relative mb-8">
-                            <div className="w-20 h-20 rounded-2xl bg-blue-50 flex items-center justify-center relative">
-                                <Sparkles className="w-10 h-10 text-blue-600 animate-pulse" />
-                                <div className="absolute inset-0 border-4 border-blue-100 rounded-2xl animate-[spin_3s_linear_infinite]" />
-                            </div>
-                        </div>
-
-                        <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">
-                            Preparing your assessment
-                        </h2>
-
-                        <p className="text-slate-500 font-medium max-w-sm mx-auto mb-8 animate-pulse">
-                            {generationSteps[generationStep] || "Finalizing secure environment..."}
-                        </p>
-
-                        <div className="h-1.5 w-64 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                                className="h-full bg-blue-600 transition-all duration-700 ease-in-out rounded-full"
-                                style={{ width: `${((generationStep + 1) / generationSteps.length) * 100}%` }}
-                            />
-                        </div>
-                    </div>
-                )}
-
                 <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6 md:p-12 relative overflow-hidden">
                     {/* Decorative Elements */}
                     <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-400/10 to-indigo-400/10 rounded-full blur-3xl" />
@@ -270,7 +204,7 @@ export default function QuizSelectionPage() {
             </TooltipProvider>
 
             {/* Assessment Confirmation Modal */}
-            <Dialog open={showInstructions} onOpenChange={(open) => !creating && setShowInstructions(open)}>
+            <Dialog open={showInstructions} onOpenChange={setShowInstructions}>
                 <DialogContent className="max-w-xl p-0 overflow-hidden border border-slate-200 rounded-2xl shadow-2xl bg-white">
                     <DialogHeader className="p-6 pb-2 text-left">
                         <div className="flex items-center gap-2 mb-2">
@@ -351,21 +285,16 @@ export default function QuizSelectionPage() {
                         <Button
                             variant="ghost"
                             onClick={() => setShowInstructions(false)}
-                            disabled={creating}
                             className="h-12 font-bold text-slate-500 hover:text-slate-900 rounded-xl flex-1 border border-slate-200 bg-white"
                         >
                             Cancel
                         </Button>
                         <Button
                             onClick={handleStartQuiz}
-                            disabled={!acceptedTerms || !acceptedAI || creating}
+                            disabled={!acceptedTerms || !acceptedAI}
                             className="h-12 px-8 font-bold text-lg bg-blue-600 hover:bg-blue-700 shadow-md rounded-xl flex-[2] transition-all"
                         >
-                            {creating ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                "Start Assessment"
-                            )}
+                            Start Assessment
                         </Button>
                     </DialogFooter>
                 </DialogContent>

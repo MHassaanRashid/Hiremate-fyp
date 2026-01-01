@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -12,15 +12,20 @@ import {
     ChevronRight,
     Loader2,
     ShieldCheck,
-    Lock
+    Lock,
+    ShieldAlert
 } from "lucide-react"
-import { getQuiz, submitQuizAnswer, completeQuiz } from "@/lib/api/quiz"
+import { getQuiz, submitQuizAnswer, completeQuiz, terminateQuiz } from "@/lib/api/quiz"
 import { supabase } from "@/lib/supabaseClient"
 import toast from "react-hot-toast"
 import { Progress } from "@/components/ui/progress"
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 import { cn } from "@/lib/utils"
 import { QuizExecutionSkeleton } from "@/components/candidate/QuizExecutionSkeleton"
+import { CodeSpace } from "@/components/ui/CodeSpace"
+import { parseQuestionContent } from "@/lib/quiz-utils"
+import { useProctoring } from "@/hooks/use-proctoring"
+import { ProctoringWarning } from "@/components/candidate/ProctoringWarning"
 
 
 export default function QuizExecutionPage() {
@@ -36,39 +41,159 @@ export default function QuizExecutionPage() {
     const [timeLeft, setTimeLeft] = useState(0)
     const [submitting, setSubmitting] = useState(false)
     const [isCompleting, setIsCompleting] = useState(false)
-    const [isCameraActive, setIsCameraActive] = useState(false)
+    const [isTerminated, setIsTerminated] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
 
-    // Camera setup for proctoring
+    // Fullscreen is already active from prepare page - no need to initialize here
+
+    // Proctoring State
+    const [warningMsg, setWarningMsg] = useState("")
+    const [violationCounts, setViolationCounts] = useState({
+        phone: 0,
+        focus: 0,
+        'multi-face': 0,
+        'no-face': 0,
+        'tab-blur': 0,
+        'head-pose': 0
+    });
+
+    const terminationThresholds = {
+        phone: 2,
+        focus: 10,
+        'multi-face': 2,
+        'no-face': 5,
+        'tab-blur': 5,
+        'head-pose': 8
+    };
+
+    const handleProctoringTermination = useCallback(async (reason: string, proof: string, logs: any[] = []) => {
+        setIsTerminated(true)
+        setSubmitting(true)
+
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                await terminateQuiz(session.access_token, quizId, reason, proof, logs)
+            }
+            toast.error("Assessment Terminated due to proctoring violation.")
+            router.push(`/candidate/quiz/${quizId}/report`)
+        } catch (error) {
+            console.error("Termination failed:", error)
+        } finally {
+            setSubmitting(false)
+        }
+    }, [quizId, router])
+
+    const handleProctoringWarning = useCallback((count: number, reason: string, type: any) => {
+        const typeStr = (type || 'focus') as keyof typeof violationCounts;
+        setWarningMsg(`${reason} (${typeStr})`);
+
+        setViolationCounts(prev => {
+            const newCounts = { ...prev, [typeStr]: prev[typeStr] + 1 };
+            const currentCount = newCounts[typeStr];
+            const threshold = terminationThresholds[typeStr as keyof typeof terminationThresholds];
+
+            toast(t => (
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 text-red-600">
+                        <ShieldAlert className="w-5 h-5" />
+                        <span className="font-bold uppercase text-[10px] tracking-widest">{typeStr} Warning</span>
+                    </div>
+                    <p className="text-xs text-slate-600 font-medium">{reason}</p>
+                    <div className="flex justify-between items-center mt-1 border-t border-slate-100 pt-1">
+                        <span className="text-[10px] font-black text-slate-400">{currentCount} / {threshold}</span>
+                        {currentCount >= threshold - 1 && <span className="text-[9px] text-red-500 font-bold animate-pulse">TERMINATION IMMINENT</span>}
+                    </div>
+                </div>
+            ), {
+                duration: 5000,
+                style: { borderLeft: '4px solid #ef4444', padding: '12px', borderRadius: '12px', background: 'white', border: '1px solid #fee2e2' }
+            });
+
+            return newCounts;
+        });
+    }, []); // Removed dependency to avoid circularity if possible, but keep it simple
+
+    // Initialize Proctoring Hook (active immediately since preparation is complete)
+    const isProctoringActive = !isCompleting && !isTerminated && !loading
+
+    const handleWarningWrapper = useCallback((count: number, reason: string, type: any) => {
+        handleProctoringWarning(count, reason, type)
+
+        // Manual termination check if hook doesn't do it
+        setViolationCounts(prev => {
+            const typeStr = (type || 'focus') as keyof typeof violationCounts;
+            const threshold = terminationThresholds[typeStr as keyof typeof terminationThresholds];
+            if (prev[typeStr] + 1 >= threshold) {
+                // We'll let the hook's violationLogs be captured via handleTerminateWrapper
+            }
+            return prev;
+        });
+    }, [handleProctoringWarning]);
+
+    const {
+        warningCount,
+        status: proctoringStatus,
+        irisMetrics,
+        isModelReady,
+        diagnostics,
+        violationLogs,
+        captureProof
+    } = useProctoring({
+        videoRef,
+        isActive: isProctoringActive,
+        onWarning: handleWarningWrapper,
+        onTerminate: (reason, proof) => handleProctoringTermination(reason, proof, violationLogs)
+    })
+
+    // Update the threshold check to use violationLogs
     useEffect(() => {
-        async function setupCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream
-                    setIsCameraActive(true)
-                }
-            } catch (err) {
-                console.error("Camera access denied:", err)
-                toast.error("Camera access is required for proctoring")
+        const typeKeys = Object.keys(violationCounts) as (keyof typeof violationCounts)[];
+        for (const type of typeKeys) {
+            if (violationCounts[type] >= terminationThresholds[type]) {
+                const proof = captureProof();
+                handleProctoringTermination(`Excessive ${type} violations: ${violationCounts[type]}/${terminationThresholds[type]}`, proof, violationLogs);
+                break;
             }
         }
-        setupCamera()
+    }, [violationCounts, handleProctoringTermination, violationLogs, captureProof]);
+
+    // Anti-Copy/Paste and Right Click Protection
+    useEffect(() => {
+        if (loading) return;
+
+        const preventDefault = (e: any) => e.preventDefault();
+        const handleContextMenu = (e: MouseEvent) => {
+            e.preventDefault();
+            toast.error("Right-click is disabled during the assessment.");
+        };
+        const handleCopy = (e: ClipboardEvent) => {
+            e.preventDefault();
+            toast.error("Copying is not allowed.");
+        };
+
+        document.addEventListener('copy', handleCopy);
+        document.addEventListener('paste', preventDefault);
+        document.addEventListener('cut', preventDefault);
+        document.addEventListener('contextmenu', handleContextMenu);
 
         return () => {
-            if (videoRef.current && videoRef.current.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream
-                stream.getTracks().forEach(track => track.stop())
-            }
-        }
-    }, [])
+            document.removeEventListener('copy', handleCopy);
+            document.removeEventListener('paste', preventDefault);
+            document.removeEventListener('cut', preventDefault);
+            document.removeEventListener('contextmenu', handleContextMenu);
+        };
+    }, [loading]);
+
+    // Fullscreen is already active from prepare page
 
     useEffect(() => {
         if (quizId) fetchQuizData()
     }, [quizId])
 
     useEffect(() => {
-        if (timeLeft > 0) {
+        // Start timer after loading completes
+        if (timeLeft > 0 && !loading) {
             const timer = setInterval(() => {
                 setTimeLeft(prev => {
                     if (prev <= 1) {
@@ -81,7 +206,8 @@ export default function QuizExecutionPage() {
             }, 1000)
             return () => clearInterval(timer)
         }
-    }, [timeLeft])
+    }, [timeLeft, loading])
+
 
     const fetchQuizData = async () => {
         try {
@@ -145,7 +271,6 @@ export default function QuizExecutionPage() {
             const stream = videoRef.current.srcObject as MediaStream
             stream.getTracks().forEach(track => track.stop())
             videoRef.current.srcObject = null
-            setIsCameraActive(false)
         }
     }
 
@@ -181,14 +306,19 @@ export default function QuizExecutionPage() {
         return `${mins}:${secs.toString().padStart(2, '0')}`
     }
 
-    if (loading) {
+    const currentQuestion = questions[currentIndex]
+    const progress = ((currentIndex + 1) / questions.length) * 100
+
+    // Block quiz until basic data is loaded
+    if (loading || !quiz) {
         return <QuizExecutionSkeleton />
     }
+
 
     // NEW: Full Screen Completion Loader
     if (isCompleting) {
         return (
-            <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+            <div className="fixed inset-0 z-[10000] bg-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-50/50 via-white to-white -z-10" />
 
                 <div className="relative mb-8">
@@ -210,9 +340,6 @@ export default function QuizExecutionPage() {
         )
     }
 
-    const currentQuestion = questions[currentIndex]
-    const progress = ((currentIndex + 1) / questions.length) * 100
-
     return (
         <div className="min-h-screen bg-slate-50 relative">
             <div className="fixed inset-0 z-0">
@@ -220,15 +347,41 @@ export default function QuizExecutionPage() {
             </div>
 
             {/* Focused Header */}
-            <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 md:px-8 py-3">
+            <div className={`sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm px-4 md:px-8 py-3 transition-opacity duration-500 opacity-100`}>
                 <div className="max-w-5xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">
-                            <ShieldCheck className="w-5 h-5 text-white" />
+                        <div className={cn(
+                            "w-9 h-9 rounded-lg flex items-center justify-center shadow-lg transition-colors duration-300",
+                            proctoringStatus === 'warning' ? "bg-amber-500 shadow-amber-500/20 animate-pulse" : "bg-blue-600 shadow-blue-600/20"
+                        )}>
+                            {proctoringStatus === 'warning' ? (
+                                <ShieldAlert className="w-5 h-5 text-white" />
+                            ) : (
+                                <ShieldCheck className="w-5 h-5 text-white" />
+                            )}
                         </div>
                         <div className="hidden sm:block">
                             <h2 className="font-bold text-slate-900 text-sm tracking-tight">CheckMate AI</h2>
-                            <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider">Proctored Session</p>
+                            <div className="flex items-center gap-2">
+                                <p className={cn(
+                                    "text-[10px] font-bold uppercase tracking-wider transition-colors",
+                                    proctoringStatus === 'warning' ? "text-red-600" : "text-blue-600"
+                                )}>
+                                    {proctoringStatus === 'warning'
+                                        ? (() => {
+                                            const type = warningMsg.match(/\((.*?)\)/)?.[1] || 'focus';
+                                            const count = violationCounts[type as keyof typeof violationCounts];
+                                            const threshold = terminationThresholds[type as keyof typeof terminationThresholds];
+                                            return `${type.replace('-', ' ')}: ${count}/${threshold}`;
+                                        })()
+                                        : 'Proctored Session'}
+                                </p>
+                                {proctoringStatus === 'warning' && (
+                                    <Badge variant="outline" className="h-4 px-1.5 text-[8px] bg-red-50 text-red-600 border-red-200 animate-pulse font-black">
+                                        WARNING
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -242,16 +395,26 @@ export default function QuizExecutionPage() {
                         {/* Camera Preview */}
                         <div className="relative w-28 h-20 bg-black rounded-lg overflow-hidden border-2 border-slate-200 shadow-md hidden sm:block">
                             <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                            {!isModelReady && (
+                                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-[2px] flex items-center justify-center">
+                                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                                </div>
+                            )}
                             <div className="absolute top-1 right-1 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
-                                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_4px_rgba(239,68,68,0.8)]" />
-                                <span className="text-[8px] font-bold text-white uppercase tracking-widest">Live</span>
+                                <div className={cn(
+                                    "w-1.5 h-1.5 rounded-full shadow-[0_0_4px_rgba(239,68,68,0.8)]",
+                                    isModelReady ? "bg-red-500 animate-pulse" : "bg-slate-500"
+                                )} />
+                                <span className="text-[8px] font-bold text-white uppercase tracking-widest">
+                                    {isModelReady ? "Live" : "Loading AI"}
+                                </span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 relative z-10 min-h-[calc(100vh-80px)] flex flex-col justify-center">
+            <div className={`max-w-3xl mx-auto px-4 md:px-6 py-8 relative z-10 min-h-[calc(100vh-80px)] flex flex-col justify-center transition-all duration-500 blur-0 scale-100 opacity-100`}>
                 <div className="space-y-6">
                     {/* Progress Bar */}
                     <div className="space-y-2">
@@ -272,16 +435,28 @@ export default function QuizExecutionPage() {
                     {/* Question Card */}
                     <Card key={currentIndex} className="border-0 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden bg-white/90 backdrop-blur-sm ring-1 ring-slate-100">
                         <CardHeader className="p-6 md:p-8 pb-4">
-                            {currentQuestion && (
-                                <div className="space-y-4">
-                                    <Badge variant="outline" className="w-fit bg-blue-50 text-blue-700 border-blue-100 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
-                                        Single Choice
-                                    </Badge>
-                                    <CardTitle className="text-xl md:text-2xl font-bold text-slate-900 leading-normal">
-                                        {currentQuestion.question_text}
-                                    </CardTitle>
-                                </div>
-                            )}
+                            {currentQuestion && (() => {
+                                const { narrative, code, language } = parseQuestionContent(currentQuestion.question_text)
+
+                                return (
+                                    <div className="space-y-4">
+                                        <Badge variant="outline" className="w-fit bg-blue-50 text-blue-700 border-blue-100 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                                            Single Choice
+                                        </Badge>
+                                        <CardTitle className="text-xl md:text-2xl font-bold text-slate-900 leading-normal">
+                                            {narrative}
+                                        </CardTitle>
+
+                                        {code && (
+                                            <CodeSpace
+                                                code={code}
+                                                language={language}
+                                                className="border-slate-200 shadow-md"
+                                            />
+                                        )}
+                                    </div>
+                                )
+                            })()}
                         </CardHeader>
 
                         <CardContent className="p-6 md:p-8 pt-2">
@@ -317,7 +492,6 @@ export default function QuizExecutionPage() {
                                 ))}
                             </RadioGroup>
                         </CardContent>
-
                         <CardFooter className="p-6 md:p-8 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
                             <div className="flex items-center gap-2 text-slate-400">
                                 <Lock className="w-3.5 h-3.5" />
@@ -344,7 +518,7 @@ export default function QuizExecutionPage() {
                     {/* Simple Footer/Pagination */}
                     <div className="text-center">
                         <p className="text-xs text-slate-400 font-medium">
-                            HireMate Secure Assessment Environment • Session ID: {quizId?.slice(0, 8)}
+                            HireMate Secure Assessment Environment &bull; Session ID: {quizId?.slice(0, 8)}
                         </p>
                     </div>
                 </div>

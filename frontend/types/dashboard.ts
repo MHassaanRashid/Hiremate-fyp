@@ -113,11 +113,19 @@ export interface TestQuestion {
 export interface TestReport {
   id: string;
   language: string;
+  status?: string;
   score_percentage: number;
   passed: boolean;
   completed_at: string;
   total_questions: number;
   correct_answers: number;
+  termination_reason?: string;
+  violation_proof?: string;
+  proctoring_logs?: Array<{
+    type: string;
+    time: string;
+    reason: string;
+  }>;
   question_results: Array<{
     question_id: string;
     correct: boolean;

@@ -116,6 +116,59 @@ export async function completeQuiz(token: string, quizId: string) {
     return response.json()
 }
 
+export async function terminateQuiz(token: string, quizId: string, reason: string, proof: string, logs: any[] = []) {
+    // Note: proof is base64
+    const response = await fetch(`${API_URL}/quiz/${quizId}/terminate`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason, proof, logs })
+    })
+
+    if (!response.ok) {
+        throw new Error('Failed to terminate quiz')
+    }
+
+    return response.json()
+}
+
+// =====================================================
+// Quiz Preparation
+// =====================================================
+
+export async function getPreparationStatus(token: string, quizId: string) {
+    const response = await fetch(`${API_URL}/quiz/${quizId}/preparation-status`, {
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+
+    if (!response.ok) {
+        throw new Error('Failed to fetch preparation status')
+    }
+
+    return response.json()
+}
+
+export async function markPreparationComplete(token: string, quizId: string) {
+    const response = await fetch(`${API_URL}/quiz/${quizId}/mark-preparation-complete`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        }
+    })
+
+    if (!response.ok) {
+        throw new Error('Failed to mark preparation complete')
+    }
+
+    return response.json()
+}
+
 // =====================================================
 // Quiz Report
 // =====================================================
