@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -23,8 +23,7 @@ import { useProctoring } from "@/hooks/use-proctoring"
 // Force dynamic rendering for this page
 export const dynamic = 'force-dynamic'
 
-
-export default function QuizPreparationPage() {
+function QuizPreparationContent() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const languageCode = searchParams.get('lang')
@@ -275,5 +274,17 @@ function MonitoringCheckItem({ icon, label, ready }: { icon: React.ReactNode, la
                 <Loader2 className="w-4 h-4 text-blue-500 ml-auto animate-spin" />
             )}
         </div>
+    )
+}
+
+export default function QuizPreparationPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+        }>
+            <QuizPreparationContent />
+        </Suspense>
     )
 }
