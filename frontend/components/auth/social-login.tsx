@@ -17,7 +17,7 @@ export default function SocialLogin({ mode, handleOAuthLogin }: SocialLoginProps
           className="w-full bg-blue-50/50 border-blue-200 text-gray-600 hover:bg-blue-100/50 hover:border-blue-300 rounded-xl h-12 flex items-center justify-center gap-2"
         >
           <img
-            src="https://www.svgrepo.com/show/355037/google.svg"
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
             alt="Google"
             className="w-5 h-5"
           />

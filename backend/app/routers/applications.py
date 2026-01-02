@@ -23,7 +23,7 @@ async def list_applications(
     ),
     date_from: Optional[str] = Query(None, description="Filter by applied_date >= date (YYYY-MM-DD)"),
     date_to: Optional[str] = Query(None, description="Filter by applied_date <= date (YYYY-MM-DD)"),
-    sort: str = Query("newest", regex="^(newest|oldest)$"),
+    sort: str = Query("newest", pattern="^(newest|oldest)$"),
     user: Any = Depends(get_current_user),
 ):
     """Get paginated candidate applications for the authenticated user."""
@@ -89,7 +89,7 @@ async def bulk_archive_applications(
 
 @router.get("/export")
 async def export_applications(
-    format: str = Query("csv", regex="^(csv|CSV)$"),
+    format: str = Query("csv", pattern="^(csv|CSV)$"),
     user: Any = Depends(get_current_user),
 ):
     """Export all applications for the current user as CSV.

@@ -1,6 +1,6 @@
 import json
 import os
-import google.generativeai as genai
+from google import genai
 from dotenv import load_dotenv
 from typing import List, Dict
 
@@ -10,18 +10,17 @@ load_dotenv()
 # Note: GEMINI_API_KEY should be in your .env file
 api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
-    genai.configure(api_key=api_key)
-    client = genai
+    client = genai.Client(api_key=api_key)
 else:
     client = None
 
 
 # List of models to try in order of preference
 PREFERRED_MODELS = [
-    "models/gemini-2.5-flash",
-    "models/gemini-2.0-flash-exp",
-    "models/gemini-1.5-flash",
-    "models/gemini-1.5-pro",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-exp",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
 ]
 
 def generate_with_fallback(prompt: str):
@@ -29,6 +28,9 @@ def generate_with_fallback(prompt: str):
     Attempts to generate content using a list of preferred models.
     Falls back to the next model if the current one fails.
     """
+    if not client:
+        raise Exception("Gemini client not initialized. Check GEMINI_API_KEY.")
+
     # Allow overriding via environment variable
     env_model = os.getenv("GEMINI_MODEL")
     models_to_try = [env_model] + PREFERRED_MODELS if env_model else PREFERRED_MODELS
@@ -42,8 +44,7 @@ def generate_with_fallback(prompt: str):
     for model_name in unique_models:
         try:
             print(f"Attempting to generate with model: {model_name}")
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(model=model_name, contents=prompt)
             print(f"Success with model: {model_name}")
             return response
         except Exception as e:
