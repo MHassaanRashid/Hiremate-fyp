@@ -8,6 +8,7 @@ export interface CandidateProfile {
   test_status?: 'not_started' | 'in_progress' | 'completed' | 'passed' | 'failed';
   interview_eligible?: boolean;
   last_test_date?: string;
+  last_test_language?: string;
 }
 
 export interface DashboardStats {

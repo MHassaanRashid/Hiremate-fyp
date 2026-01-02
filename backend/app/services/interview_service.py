@@ -9,11 +9,23 @@ class InterviewService:
     def get_available_interviewers(tech_stack: str):
         """
         Fetch interviewers who have expertise in the given tech stack.
-        (Currently filtering by profiles with role='interviewer' and 
-        checking skills or expertise fields)
         """
         try:
-            # Note: Assuming 'skills' is a JSONB field in profiles
+            # Tech stack mapping (code to display name)
+            stack_map = {
+                "py": "Python",
+                "js": "JavaScript",
+                "ts": "TypeScript",
+                "cpp": "C++",
+                "java": "Java",
+                "csharp": "C#",
+                "go": "Go",
+                "rust": "Rust"
+            }
+            
+            search_tech = stack_map.get(tech_stack.lower(), tech_stack)
+            print(f"Searching interviewers for: {search_tech}")
+
             res = supabase_client.table("profiles").select("*").eq("role", "interviewer").execute()
             
             interviewers = res.data or []
@@ -27,8 +39,8 @@ class InterviewService:
                     except:
                         skills = []
                 
-                # Check if tech_stack is in skills
-                if any(tech_stack.lower() in s.lower() for s in (skills or [])):
+                # Check if search_tech is in skills
+                if any(search_tech.lower() in s.lower() for s in (skills or [])):
                     matched.append(interviewer)
             
             # If no direct skill match, return all interviewers as fallback
@@ -63,7 +75,7 @@ class InterviewService:
             
             # 3. Create Interview Record
             interview_id = str(uuid.uuid4())
-            interview_data = {
+            full_interview_data = {
                 "id": interview_id,
                 "candidate_id": candidate_id,
                 "interviewer_name": interviewer["full_name"],
@@ -79,21 +91,57 @@ class InterviewService:
                 "meeting_id": zoom_meeting["id"]
             }
             
+            # --- Robust Column Handling ---
+            try:
+                # Try to get existing columns from OpenAPI spec to filter the data
+                import httpx
+                from app.core.config import Config
+                
+                url = f"{Config.SUPABASE_URL}/rest/v1/"
+                headers = {
+                    "apikey": Config.SUPABASE_SERVICE_KEY or Config.SUPABASE_KEY,
+                    "Authorization": f"Bearer {Config.SUPABASE_SERVICE_KEY or Config.SUPABASE_KEY}"
+                }
+                spec_res = httpx.get(url, headers=headers)
+                spec = spec_res.json()
+                
+                # Check different spec locations for definitions
+                interviews_def = spec.get('definitions', {}).get('interviews', {})
+                if not interviews_def:
+                    interviews_def = spec.get('components', {}).get('schemas', {}).get('interviews', {})
+                
+                actual_columns = interviews_def.get('properties', {}).keys()
+                
+                if actual_columns:
+                    print(f"Filtering interview_data against columns: {list(actual_columns)}")
+                    interview_data = {k: v for k, v in full_interview_data.items() if k in actual_columns}
+                else:
+                    interview_data = full_interview_data # Fallback
+                    
+            except Exception as schema_err:
+                print(f"Warning: Could not fetch schema/spec to filter columns: {schema_err}")
+                # Fallback: remove 'company_name' if we suspect it might be missing based on error report
+                interview_data = full_interview_data
+            
             res = supabase_client.table("interviews").insert(interview_data).execute()
             
-            # 4. Create Activities/Notifications
-            activity_data = [
-                {
-                    "candidate_id": candidate_id,
-                    "activity_type": "interview_scheduled",
-                    "title": "Interview Scheduled",
-                    "description": f"Live Technical Interview for {job_title} at {scheduled_at}. Zoom link: {zoom_meeting['join_url']}",
-                    "priority": "high",
-                    "user_id": candidate_id
-                }
-            ]
-            
-            supabase_client.table("activities").insert(activity_data).execute()
+            # 4. Create Activities/Notifications (Non-blocking)
+            try:
+                activity_data = [
+                    {
+                        "candidate_id": candidate_id,
+                        "activity_type": "interview_scheduled",
+                        "title": "Interview Scheduled",
+                        "description": f"Live Technical Interview for {job_title} at {scheduled_at}. Zoom link: {zoom_meeting['join_url']}",
+                        "priority": "high",
+                        "user_id": candidate_id
+                    }
+                ]
+                
+                supabase_client.table("activities").insert(activity_data).execute()
+            except Exception as activity_err:
+                print(f"Warning: Failed to record activity: {activity_err}")
+                # We don't raise here because the interview is already booked in 'interviews' table
             
             return {
                 "interview_id": interview_id,

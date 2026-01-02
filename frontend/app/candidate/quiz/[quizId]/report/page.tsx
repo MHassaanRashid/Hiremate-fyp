@@ -269,7 +269,10 @@ export default function QuizReportPage() {
                                                 Great job! Your profile has been fast-tracked. Select a time slot to showcase your communication skills to our team.
                                             </p>
                                         </div>
-                                        <Button className="h-14 px-8 bg-white text-blue-600 hover:bg-blue-50 font-bold text-lg rounded-xl shadow-xl transition-all whitespace-nowrap group-hover:scale-105">
+                                        <Button
+                                            onClick={() => router.push('/candidate/interviews/schedule')}
+                                            className="h-14 px-8 bg-white text-blue-600 hover:bg-blue-50 font-bold text-lg rounded-xl shadow-xl transition-all whitespace-nowrap group-hover:scale-105"
+                                        >
                                             Book Interview
                                             <ArrowRight className="w-5 h-5 ml-2" />
                                         </Button>

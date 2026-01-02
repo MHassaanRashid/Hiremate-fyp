@@ -166,6 +166,32 @@ async def create_quiz(
         print(f"Error creating test: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/history")
+async def get_test_history(
+    current_user = Depends(get_current_user)
+):
+    """Get candidate's test history"""
+    try:
+        tests_res = supabase_client.table("candidate_tests").select("*").eq(
+            "candidate_id", str(current_user.id)
+        ).eq("status", "completed").order("completed_at", desc=True).execute()
+        
+        return {
+            'tests': [
+                {
+                    'id': t['id'],
+                    'language': t['language'],
+                    'score_percentage': float(t.get('score_percentage') or 0),
+                    'passed': t.get('passed', False),
+                    'completed_at': t.get('completed_at')
+                }
+                for t in (tests_res.data or [])
+            ]
+        }
+    except Exception as e:
+        print(f"Error fetching history: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/{test_id}")
 async def get_test(
     test_id: str,
@@ -293,15 +319,29 @@ async def complete_test(
         }).eq("id", test_id).execute()
         
         # Update profile if passed and clean record
-        interview_eligible = passed and clean_record
+        # Note: If they were already eligible from a previous test, keep them eligible
+        current_profile = supabase_client.table("profiles").select("interview_eligible").eq("id", current_user.id).single().execute()
+        was_eligible = current_profile.data.get('interview_eligible', False) if current_profile.data else False
+        
+        interview_eligible = (passed and clean_record) or was_eligible
         
         profile_update = {
-            'test_status': 'passed' if passed else 'failed',
+            'test_status': 'passed' if (passed or was_eligible) else 'failed',
             'last_test_date': datetime.utcnow().isoformat(),
             'interview_eligible': interview_eligible
         }
         
-        supabase_client.table("profiles").update(profile_update).eq("id", current_user.id).execute()
+        # Add last_test_language only if we passed this test
+        if passed:
+            profile_update['last_test_language'] = test['language']
+            
+        try:
+            supabase_client.table("profiles").update(profile_update).eq("id", current_user.id).execute()
+        except Exception as e:
+            print(f"Warning: Failed to update profile with full data: {e}. Trying partial update...")
+            # Fallback for missing last_test_language column
+            profile_update.pop('last_test_language', None)
+            supabase_client.table("profiles").update(profile_update).eq("id", current_user.id).execute()
         
         # If eligible, we could automatically trigger the first step of scheduling
         # For now, we'll return the status so the frontend can redirect to scheduling
@@ -428,7 +468,7 @@ async def get_test_report(
             'id': test['id'],
             'language': test['language'],
             'status': test.get('status'),
-            'score_percentage': float(test.get('score_percentage', 0)),
+            'score_percentage': float(test.get('score_percentage') or 0),
             'passed': test.get('passed', False),
             'completed_at': test.get('completed_at'),
             'total_questions': test['total_questions'],
@@ -451,28 +491,3 @@ async def get_test_report(
         print(f"Error fetching report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/history")
-async def get_test_history(
-    current_user = Depends(get_current_user)
-):
-    """Get candidate's test history"""
-    try:
-        tests_res = supabase_client.table("candidate_tests").select("*").eq(
-            "candidate_id", current_user.id
-        ).eq("status", "completed").order("completed_at", desc=True).execute()
-        
-        return {
-            'tests': [
-                {
-                    'id': t['id'],
-                    'language': t['language'],
-                    'score_percentage': float(t.get('score_percentage', 0)),
-                    'passed': t.get('passed', False),
-                    'completed_at': t.get('completed_at')
-                }
-                for t in (tests_res.data or [])
-            ]
-        }
-    except Exception as e:
-        print(f"Error fetching history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))

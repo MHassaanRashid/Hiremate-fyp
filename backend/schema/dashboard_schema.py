@@ -12,6 +12,8 @@ class CandidateProfileSchema(BaseModel):
     name: str
     profileCompletion: int
     avatar: Optional[str] = None
+    interview_eligible: Optional[bool] = False
+    last_test_language: Optional[str] = None
     
     class Config:
         from_attributes = True

@@ -205,7 +205,9 @@ class DashboardService:
         profile = CandidateProfileSchema(
             name=profile_data.get("full_name", user.email.split('@')[0] if hasattr(user, 'email') else "User"),
             profileCompletion=overall_score,
-            avatar=None  # No profile_picture field in profiles table
+            avatar=profile_data.get("avatar_url"), # Standardize avatar field
+            interview_eligible=profile_data.get("interview_eligible", False),
+            last_test_language=profile_data.get("last_test_language")
         )
         
         # Fetch stats

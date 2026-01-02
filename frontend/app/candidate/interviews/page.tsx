@@ -15,6 +15,8 @@ import {
     Mail,
     Phone,
     User,
+    Award,
+    ArrowRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -50,6 +52,7 @@ export default function CandidateInterviewsPage() {
     const { user, isLoading: authLoading } = useAuth()
     const router = useRouter()
     const [interviews, setInterviews] = useState<Interview[]>([])
+    const [profile, setProfile] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -58,20 +61,43 @@ export default function CandidateInterviewsPage() {
                 router.push("/auth?tab=login")
                 return
             }
-            fetchInterviews()
+            fetchData()
         }
     }, [user, authLoading])
 
-    const fetchInterviews = async () => {
+    const fetchData = async () => {
         try {
             setLoading(true)
+            const token = localStorage.getItem("access_token")
             const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
-            const res = await fetch(`${backend}/interviews/candidate`, {
-                headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
+
+            // Fetch Interviews
+            const intRes = await fetch(`${backend}/interviews/candidate`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "ngrok-skip-browser-warning": "69420"
+                }
             })
-            if (!res.ok) throw new Error("Failed to fetch interviews")
-            const data = await res.json()
-            setInterviews(data.interviews)
+            if (intRes.ok) {
+                const data = await intRes.json()
+                setInterviews(data.interviews || [])
+            }
+
+            // Fetch Profile
+            const profRes = await fetch(`${backend}/profile`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "ngrok-skip-browser-warning": "69420"
+                }
+            })
+            if (profRes.ok) {
+                const data = await profRes.json()
+                console.log("Profile Data Fetched:", data.profile)
+                setProfile(data.profile)
+            } else {
+                console.error("Failed to fetch profile:", profRes.status)
+            }
+
         } catch (err) {
             console.error(err)
         } finally {
@@ -114,6 +140,32 @@ export default function CandidateInterviewsPage() {
                             Manage your upcoming and past interview sessions
                         </p>
                     </div>
+
+                    {/* Eligibility CTA */}
+                    {profile?.interview_eligible && (
+                        <Card className="border-0 shadow-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white overflow-hidden relative group">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-white/20 transition-all duration-700" />
+                            <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="space-y-2">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm border border-white/20 text-white text-xs font-bold uppercase tracking-wide">
+                                        <Award className="w-3.5 h-3.5" />
+                                        {profile.last_test_language || "Technical"} Assessment Cleared
+                                    </div>
+                                    <h2 className="text-2xl font-bold">Ready for your {profile.last_test_language || ""} Live Interview?</h2>
+                                    <p className="text-blue-100 font-medium">
+                                        You've demonstrated proficiency in {profile.last_test_language || "your chosen stack"}. Schedule your session to meet our experts.
+                                    </p>
+                                </div>
+                                <Button
+                                    onClick={() => router.push(`/candidate/interviews/schedule?stack=${encodeURIComponent(profile.last_test_language || "")}`)}
+                                    className="h-12 px-8 bg-white text-blue-600 hover:bg-blue-50 font-bold rounded-xl shadow-lg transition-all whitespace-nowrap group-hover:scale-105"
+                                >
+                                    Schedule {profile.last_test_language || ""} Interview
+                                    <ArrowRight className="w-5 h-5 ml-2" />
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    )}
 
                     {/* Content */}
                     {interviews.length === 0 ? (

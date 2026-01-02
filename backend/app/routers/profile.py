@@ -76,6 +76,9 @@ async def get_profile(user=Depends(get_current_user)):
             "company_logo": profile_details.get("company_logo"),
             "company_description": profile_details.get("company_description"),
             "website": profile_details.get("website"),
+            "test_status": profile_details.get("test_status"),
+            "interview_eligible": profile_details.get("interview_eligible", False),
+            "last_test_language": profile_details.get("last_test_language"),
             "created_at": user.created_at.isoformat(),
             "updated_at": user.updated_at.isoformat()
         }
@@ -163,6 +166,9 @@ async def update_profile(
             "company_logo": profile_details.get("company_logo"),
             "company_description": profile_details.get("company_description"),
             "website": profile_details.get("website"),
+            "test_status": profile_details.get("test_status"),
+            "interview_eligible": profile_details.get("interview_eligible", False),
+            "last_test_language": profile_details.get("last_test_language"),
             "updated_at": user_response.user.updated_at.isoformat()
         }
         return {"message": "Profile updated successfully", "profile": user_data}

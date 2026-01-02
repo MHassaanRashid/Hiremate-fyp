@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { getAvailableSlots, bookSlot } from "@/lib/api/interview-workflow"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -15,28 +15,49 @@ import { format } from "date-fns"
 export default function CandidateSchedulingPage() {
     const { user, isLoading: authLoading } = useAuth()
     const router = useRouter()
+    const searchParams = useSearchParams()
+    const stackFromUrl = searchParams.get('stack')
     const [slots, setSlots] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [selectedSlot, setSelectedSlot] = useState<any>(null)
     const [booking, setBooking] = useState(false)
-    const [techStack, setTechStack] = useState("React & Node.js") // Default for demo, should come from previous test
+    const [techStack, setTechStack] = useState(stackFromUrl || "React") // Use URL param if available
 
     useEffect(() => {
         if (!authLoading && user) {
-            fetchSlots()
+            fetchInitialData()
         }
     }, [user, authLoading])
 
-    const fetchSlots = async () => {
+    const fetchInitialData = async () => {
         try {
             setLoading(true)
             const token = localStorage.getItem('access_token')
             if (!token) throw new Error("No token found")
 
-            const data = await getAvailableSlots(token, techStack)
-            setSlots(data.slots)
+            // Fetch Profile to get tech stack
+            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const profRes = await fetch(`${backend}/profile`, {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "ngrok-skip-browser-warning": "69420"
+                }
+            })
+
+            let currentTech = techStack
+            if (profRes.ok) {
+                const data = await profRes.json()
+                if (data.profile?.last_test_language) {
+                    currentTech = data.profile.last_test_language
+                    setTechStack(currentTech)
+                }
+            }
+
+            // Fetch Slots
+            const data = await getAvailableSlots(token, currentTech)
+            setSlots(data.slots || [])
         } catch (error: any) {
-            console.error("Error fetching slots:", error)
+            console.error("Error fetching data:", error)
             toast.error(error.message || "Failed to fetch available slots")
         } finally {
             setLoading(false)
@@ -89,7 +110,7 @@ export default function CandidateSchedulingPage() {
                         Next Step: Live Interview
                     </div>
                     <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-3">
-                        Schedule Your Technical Interview
+                        Schedule Your {techStack} Interview
                     </h1>
                     <p className="text-slate-500 font-medium max-w-xl mx-auto">
                         Congratulations! Your performance in the AI Quiz and clean monitoring record have qualified you for the live interview phase. Choose a slot that works for you.
@@ -149,8 +170,8 @@ export default function CandidateSchedulingPage() {
                                         key={slot.id}
                                         onClick={() => setSelectedSlot(slot)}
                                         className={`group relative flex items-center justify-between p-4 rounded-xl border-2 transition-all cursor-pointer ${isSelected
-                                                ? 'border-blue-600 bg-blue-50 shadow-md ring-1 ring-blue-600/20'
-                                                : 'border-white bg-white/70 hover:border-blue-200 hover:bg-white shadow-sm'
+                                            ? 'border-blue-600 bg-blue-50 shadow-md ring-1 ring-blue-600/20'
+                                            : 'border-white bg-white/70 hover:border-blue-200 hover:bg-white shadow-sm'
                                             }`}
                                     >
                                         <div className="flex items-center gap-4">
