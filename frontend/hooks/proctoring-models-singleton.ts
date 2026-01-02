@@ -4,6 +4,7 @@
 let globalModelInstance: { faceMesh: any, camera: any } | null = null
 let globalObjectDetector: any | null = null
 let isGloballyInitializing = false
+let baselineGazeMetrics: { x: number, y: number } | null = null
 
 export function getGlobalModelInstance() {
     return globalModelInstance
@@ -27,6 +28,14 @@ export function isGloballyInitializingModels() {
 
 export function setGloballyInitializing(value: boolean) {
     isGloballyInitializing = value
+}
+
+export function getBaselineGazeMetrics() {
+    return baselineGazeMetrics
+}
+
+export function setBaselineGazeMetrics(metrics: { x: number, y: number } | null) {
+    baselineGazeMetrics = metrics
 }
 
 export function cleanupGlobalModels() {

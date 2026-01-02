@@ -136,6 +136,7 @@ export default function QuizExecutionPage() {
         status: proctoringStatus,
         irisMetrics,
         isModelReady,
+        isCalibrated,
         diagnostics,
         violationLogs,
         captureProof
@@ -143,7 +144,10 @@ export default function QuizExecutionPage() {
         videoRef,
         isActive: isProctoringActive,
         onWarning: handleWarningWrapper,
-        onTerminate: (reason, proof) => handleProctoringTermination(reason, proof, violationLogs)
+        onTerminate: (reason, proof) => {
+            // violationLogs will be available via closure when this executes
+            handleProctoringTermination(reason, proof, violationLogs)
+        }
     })
 
     // Update the threshold check to use violationLogs
@@ -285,7 +289,7 @@ export default function QuizExecutionPage() {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            await completeQuiz(session.access_token, quizId)
+            await completeQuiz(session.access_token, quizId, violationLogs)
             // Delay slightly to let the animation play/user perceive the "analysis"
             await new Promise(resolve => setTimeout(resolve, 2000))
 
@@ -403,10 +407,10 @@ export default function QuizExecutionPage() {
                             <div className="absolute top-1 right-1 flex items-center gap-1.5 bg-black/50 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
                                 <div className={cn(
                                     "w-1.5 h-1.5 rounded-full shadow-[0_0_4px_rgba(239,68,68,0.8)]",
-                                    isModelReady ? "bg-red-500 animate-pulse" : "bg-slate-500"
+                                    (isModelReady && isCalibrated) ? "bg-red-500 animate-pulse" : "bg-slate-500"
                                 )} />
                                 <span className="text-[8px] font-bold text-white uppercase tracking-widest">
-                                    {isModelReady ? "Live" : "Loading AI"}
+                                    {(isModelReady && isCalibrated) ? "Live" : "Calibrating"}
                                 </span>
                             </div>
                         </div>

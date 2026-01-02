@@ -15,7 +15,11 @@ import {
     Save,
     X,
     AlertCircle,
+    ShieldAlert,
+    MessageSquare,
+    CheckCircle2
 } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -34,6 +38,8 @@ export default function LiveInterviewPage() {
     const [notes, setNotes] = useState("")
     const [isSaving, setIsSaving] = useState(false)
     const [elapsedTime, setElapsedTime] = useState(0)
+    const [violations, setViolations] = useState<any[]>([])
+    const [isLive, setIsLive] = useState(false)
 
     useEffect(() => {
         const fetchInterview = async () => {
@@ -60,15 +66,42 @@ export default function LiveInterviewPage() {
         }
     }, [user, authLoading, interviewId])
 
-    // Timer for interview duration
+    // Timer for interview duration & Real-time proctoring
     useEffect(() => {
-        if (interview?.status === 'in-progress') {
+        if (isLive) {
             const interval = setInterval(() => {
                 setElapsedTime(prev => prev + 1)
             }, 1000)
-            return () => clearInterval(interval)
+
+            // Subscribe to proctoring channel
+            const channel = supabase.channel(`interview_${interviewId}`)
+                .on('broadcast', { event: 'proctoring_violation' }, (payload) => {
+                    console.log('Received violation:', payload)
+                    setViolations(prev => [payload.payload, ...prev])
+                    toast(
+                        (t) => (
+                            <div className="flex items-start gap-3">
+                                <ShieldAlert className="w-5 h-5 text-red-500 mt-0.5" />
+                                <div>
+                                    <p className="text-xs font-bold text-slate-900 uppercase tracking-tighter">Candidate Violation</p>
+                                    <p className="text-[10px] text-slate-600 font-medium">{payload.payload.reason}</p>
+                                </div>
+                            </div>
+                        ),
+                        {
+                            duration: 6000,
+                            style: { borderLeft: '4px solid #ef4444', borderRadius: '12px' }
+                        }
+                    )
+                })
+                .subscribe()
+
+            return () => {
+                clearInterval(interval)
+                supabase.removeChannel(channel)
+            }
         }
-    }, [interview?.status])
+    }, [isLive, interviewId])
 
     const formatTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60)
@@ -157,42 +190,68 @@ export default function LiveInterviewPage() {
                     <p className="text-slate-600 mt-1">{interview.candidate.name} - {interview.position}</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Badge className="bg-indigo-100 text-indigo-700 text-lg px-4 py-2">
-                        <Clock className="w-4 h-4 mr-2" />
-                        {formatTime(elapsedTime)}
-                    </Badge>
-                    <Button
-                        variant="destructive"
-                        onClick={handleEndInterview}
-                        className="bg-rose-600 hover:bg-rose-700"
-                    >
-                        <X className="w-4 h-4 mr-2" />
-                        End Interview
-                    </Button>
+                    {!isLive ? (
+                        <Button
+                            onClick={() => setIsLive(true)}
+                            className="bg-emerald-600 hover:bg-emerald-700 h-11 px-6 font-bold rounded-xl shadow-lg shadow-emerald-600/20"
+                        >
+                            <Video className="w-4 h-4 mr-2" />
+                            Start Interview Session
+                        </Button>
+                    ) : (
+                        <>
+                            <Badge className="bg-indigo-100 text-indigo-700 text-lg px-4 py-2 border-indigo-200">
+                                <Clock className="w-4 h-4 mr-2" />
+                                {formatTime(elapsedTime)}
+                            </Badge>
+                            <Button
+                                variant="destructive"
+                                onClick={handleEndInterview}
+                                className="bg-rose-600 hover:bg-rose-700 h-11 px-6 font-bold rounded-xl shadow-lg shadow-rose-600/20"
+                            >
+                                <X className="w-4 h-4 mr-2" />
+                                End Interview
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Video Container */}
                 <div className="lg:col-span-2 space-y-6">
-                    <Card className="bg-white/80 backdrop-blur-xl border-indigo-200/50">
-                        <CardContent className="p-6">
-                            <div className="aspect-video bg-slate-900 rounded-lg flex items-center justify-center">
-                                <div className="text-center text-white">
-                                    <Video className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                                    <p className="text-lg">Video Interview Interface</p>
-                                    <p className="text-sm text-slate-400 mt-2">WebRTC integration placeholder</p>
-                                    {interview.meetingLink && (
-                                        <a
-                                            href={interview.meetingLink}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-block mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
-                                        >
-                                            Join Meeting
-                                        </a>
-                                    )}
-                                </div>
+                    <Card className="border-0 shadow-xl shadow-slate-200/50 rounded-2xl overflow-hidden bg-white">
+                        <CardContent className="p-0">
+                            <div className="aspect-video bg-slate-900 flex flex-col items-center justify-center text-white relative">
+                                {!isLive ? (
+                                    <div className="text-center p-8 bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 max-w-sm">
+                                        <Video className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+                                        <h3 className="font-bold text-lg mb-2">Ready to start?</h3>
+                                        <p className="text-slate-400 text-xs mb-6 font-medium">Click "Start Interview Session" above to begin monitoring and join the call.</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <Video className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                                        <div className="text-center">
+                                            <p className="text-xl font-black tracking-tight text-white/90">LIVE SESSION ACTIVE</p>
+                                            <p className="text-xs text-slate-400 mt-2 font-medium">Connected to Zoom via secure tunnel</p>
+
+                                            {interview.meetingLink && (
+                                                <Button
+                                                    className="mt-8 bg-blue-600 hover:bg-blue-700 h-12 px-8 font-black rounded-xl transition-all shadow-xl shadow-blue-600/30"
+                                                    onClick={() => window.open(interview.meetingLink, '_blank')}
+                                                >
+                                                    Join Zoom Meeting
+                                                </Button>
+                                            )}
+                                        </div>
+
+                                        <div className="absolute bottom-6 left-6 flex items-center gap-2">
+                                            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Recoring Active</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </CardContent>
                     </Card>
@@ -228,8 +287,45 @@ export default function LiveInterviewPage() {
                     </Card>
                 </div>
 
-                {/* Candidate Info Panel */}
-                <div>
+                {/* Left Column: Proctoring & Info */}
+                <div className="space-y-6">
+                    {/* Live Proctoring Monitor */}
+                    <Card className="border-0 shadow-xl shadow-slate-200/50 rounded-2xl bg-white overflow-hidden border-t-4 border-red-500">
+                        <CardHeader className="bg-red-50/50 pb-3">
+                            <CardTitle className="text-sm font-black text-red-900 flex items-center gap-2 uppercase tracking-widest">
+                                <ShieldAlert className="w-4 h-4" />
+                                AI Proctoring Feed
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-4 space-y-3">
+                            {violations.length === 0 ? (
+                                <div className="py-8 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-20" />
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">No violations detected</p>
+                                </div>
+                            ) : (
+                                <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                    {violations.map((v, i) => (
+                                        <div key={i} className="p-3 bg-red-50 rounded-lg border border-red-100 flex items-start gap-3 animate-in slide-in-from-right duration-300">
+                                            <AlertCircle className="w-4 h-4 text-red-600 mt-0.5" />
+                                            <div>
+                                                <p className="text-[10px] font-black text-red-900 uppercase tracking-tighter">{v.type}</p>
+                                                <p className="text-[10px] text-red-700 font-medium leading-normal">{v.reason}</p>
+                                                <p className="text-[8px] text-red-400 mt-1 font-bold">{new Date(v.timestamp).toLocaleTimeString()}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="pt-2">
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tight flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                    Live Sync Active
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
                     <Card className="bg-white/80 backdrop-blur-xl border-indigo-200/50">
                         <CardHeader>
                             <CardTitle className="flex items-center">

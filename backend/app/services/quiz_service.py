@@ -16,17 +16,21 @@ else:
 
 
 # List of models to try in order of preference
+# Using models/ prefix as required by the API
+# Prioritizing newer models likely to have available quota
 PREFERRED_MODELS = [
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
+    "models/gemini-2.5-flash",          # Newest, likely has quota
+    "models/gemini-2.5-pro",             # Newest pro version
+    "models/gemini-2.0-flash-exp",       # Experimental, may work
+    "models/gemini-2.0-flash-lite-001",  # Lightweight alternative
+    "models/gemini-exp-1206",            # Experimental alternative
 ]
 
 def generate_with_fallback(prompt: str):
     """
     Attempts to generate content using a list of preferred models.
-    Falls back to the next model if the current one fails.
+    Automatically falls back to the next model on ANY error (rate limits, quota, 404, etc.).
+    Only raises exception if ALL models fail.
     """
     if not client:
         raise Exception("Gemini client not initialized. Check GEMINI_API_KEY.")
@@ -40,19 +44,41 @@ def generate_with_fallback(prompt: str):
     unique_models = [x for x in models_to_try if x and not (x in seen or seen.add(x))]
 
     last_error = None
+    errors_log = []  # Track all errors for debugging
 
     for model_name in unique_models:
         try:
-            print(f"Attempting to generate with model: {model_name}")
+            print(f">> Attempting to generate with model: {model_name}")
             response = client.models.generate_content(model=model_name, contents=prompt)
-            print(f"Success with model: {model_name}")
+            print(f">> SUCCESS with model: {model_name}")
             return response
         except Exception as e:
-            print(f"Failed with model {model_name}: {e}")
+            # Detect error type for better logging
+            error_type = "UNKNOWN"
+            error_msg = str(e)
+            
+            if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                error_type = "RATE_LIMIT/QUOTA_EXHAUSTED"
+            elif "404" in error_msg or "NOT_FOUND" in error_msg:
+                error_type = "MODEL_NOT_FOUND"
+            elif "401" in error_msg or "UNAUTHORIZED" in error_msg:
+                error_type = "AUTHENTICATION_FAILED"
+            elif "500" in error_msg or "INTERNAL" in error_msg:
+                error_type = "SERVER_ERROR"
+            
+            error_summary = f"[{error_type}] {model_name}"
+            errors_log.append(error_summary)
+            
+            print(f"XX Failed with model {model_name}: {error_type}")
+            print(f"   Error details: {e}")
             last_error = e
             continue
     
     # If we get here, all models failed
+    print(f"\n!! WARNING: ALL MODELS FAILED. Tried {len(unique_models)} models:")
+    for i, err in enumerate(errors_log, 1):
+        print(f"   {i}. {err}")
+    
     raise last_error or Exception("No valid Gemini models found.")
 
 def generate_ai_mcqs(topic: str, difficulty: str = "intermediate", num_questions: int = 10) -> List[Dict]:

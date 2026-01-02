@@ -117,9 +117,11 @@ export interface Evaluation {
     communication: number
     problemSolving: number
     culturalFit: number
+    honestyScore: number
     overallRating: number
     strengths: string
     weaknesses: string
+    weakConcepts: string
     recommendation: 'strong-hire' | 'hire' | 'maybe' | 'no-hire'
     comments: string
     submittedAt?: string
@@ -163,6 +165,7 @@ export interface UpdateInterviewerProfileRequest {
     name?: string
     expertise?: string[]
     skills?: string[]
+    years_of_experience?: number
     availability?: {
         monday?: boolean
         tuesday?: boolean

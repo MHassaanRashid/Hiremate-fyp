@@ -17,9 +17,11 @@ class InterviewEvaluation(BaseModel):
     communication: int
     problem_solving: int
     cultural_fit: int
+    honesty_score: int
     overall_rating: float
     strengths: str
     weaknesses: str
+    weak_concepts: str
     recommendation: str  # strong-hire, hire, maybe, no-hire
     comments: str
 
@@ -29,6 +31,7 @@ class ProfileUpdate(BaseModel):
     skills: Optional[List[str]] = None
     availability: Optional[Dict[str, bool]] = None
     preferred_time_slots: Optional[List[str]] = None
+    years_of_experience: Optional[int] = None
     bio: Optional[str] = None
     linkedin: Optional[str] = None
 
@@ -367,9 +370,11 @@ async def submit_evaluation(
             "communication": evaluation.communication,
             "problemSolving": evaluation.problem_solving,
             "culturalFit": evaluation.cultural_fit,
+            "honestyScore": evaluation.honesty_score,
             "overallRating": evaluation.overall_rating,
             "strengths": evaluation.strengths,
             "weaknesses": evaluation.weaknesses,
+            "weakConcepts": evaluation.weak_concepts,
             "recommendation": evaluation.recommendation,
             "comments": evaluation.comments,
             "submittedAt": datetime.now().isoformat(),
@@ -474,10 +479,10 @@ async def get_interviewer_profile(user=Depends(get_current_user)):
             "name": profile.get("full_name", ""),
             "email": profile.get("email", ""),
             "avatar": profile.get("avatar_url"),
-            "expertise": [],  # TODO: Add expertise field to profiles table
+            "expertise": profile.get("expertise", []),
             "skills": skills if isinstance(skills, list) else [],
-            "yearsOfExperience": 0,  # TODO: Add to profiles table
-            "availability": {
+            "yearsOfExperience": profile.get("years_of_experience", 0),
+            "availability": profile.get("availability", {
                 "monday": True,
                 "tuesday": True,
                 "wednesday": True,
@@ -485,8 +490,8 @@ async def get_interviewer_profile(user=Depends(get_current_user)):
                 "friday": True,
                 "saturday": False,
                 "sunday": False,
-            },  # TODO: Add availability to profiles table
-            "preferredTimeSlots": ["09:00-12:00", "14:00-17:00"],  # TODO: Add to profiles table
+            }),
+            "preferredTimeSlots": profile.get("preferred_time_slots", ["09:00-12:00", "14:00-17:00"]),
             "bio": profile.get("summary", ""),
             "linkedIn": profile.get("linkedin", ""),
         }
@@ -515,15 +520,26 @@ async def update_interviewer_profile(
         if profile_data.linkedin:
             update_data["linkedin"] = profile_data.linkedin
         if profile_data.skills:
-            update_data["skills"] = json.dumps(profile_data.skills)
-        
-        # TODO: Add expertise, availability, preferredTimeSlots to profiles table
+            update_data["skills"] = profile_data.skills  # Supabase handles list to JSONB
+        if profile_data.expertise:
+            update_data["expertise"] = profile_data.expertise
+        if profile_data.availability:
+            update_data["availability"] = profile_data.availability
+        if profile_data.preferred_time_slots:
+            update_data["preferred_time_slots"] = profile_data.preferred_time_slots
+        if profile_data.years_of_experience is not None:
+            update_data["years_of_experience"] = profile_data.years_of_experience
         
         if update_data:
-            res = supabase_client.table("profiles").update(update_data).eq("id", user.id).execute()
-            
-            if not res.data:
-                raise HTTPException(status_code=404, detail="Profile not found")
+            try:
+                res = supabase_client.table("profiles").update(update_data).eq("id", user.id).execute()
+                if not res.data:
+                    raise HTTPException(status_code=404, detail="Profile not found")
+            except Exception as db_err:
+                print(f"Database Error: {db_err}")
+                import traceback
+                print(traceback.format_exc())
+                raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
         
         return {"message": "Profile updated successfully"}
     except HTTPException:

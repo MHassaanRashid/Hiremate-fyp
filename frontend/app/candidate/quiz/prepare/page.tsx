@@ -8,10 +8,13 @@ import {
     Loader2,
     CheckCircle2,
     ShieldCheck,
+    ShieldAlert,
     Camera,
     Brain,
     FileText,
-    Sparkles
+    Sparkles,
+    Eye,
+    Shield
 } from "lucide-react"
 import { createQuiz } from "@/lib/api/quiz"
 import { supabase } from "@/lib/supabaseClient"
@@ -50,7 +53,7 @@ function QuizPreparationContent() {
     }, [])
 
     // Monitor proctoring initialization
-    const { isModelReady, diagnostics } = useProctoring({
+    const { isModelReady, isCalibrated, diagnostics } = useProctoring({
         videoRef,
         isActive: false, // Not active during preparation
         onWarning: () => { },
@@ -87,15 +90,15 @@ function QuizPreparationContent() {
         createQuizAsync()
     }, [languageCode, router])
 
-    // Auto-start when both systems ready
+    // Automatic redirect when both are ready
     useEffect(() => {
-        if (quizReady && isModelReady && quizId) {
-            // Redirect immediately - no artificial delay
-            router.push(`/candidate/quiz/${quizId}`)
+        if (quizReady && isModelReady && isCalibrated) {
+            const timer = setTimeout(() => {
+                router.push(`/candidate/quiz/${quizId}`)
+            }, 1000)
+            return () => clearTimeout(timer)
         }
-    }, [quizReady, isModelReady, quizId, router])
-
-    const allSystemsReady = quizReady && isModelReady
+    }, [quizReady, isModelReady, isCalibrated, quizId, router]) // Added isCalibrated
 
     if (creationError) {
         return (
@@ -162,15 +165,18 @@ function QuizPreparationContent() {
                                 </div>
 
                                 <div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">
-                                        Quiz Preparation
-                                    </h3>
-                                    <p className={cn(
-                                        "text-sm font-semibold transition-colors",
-                                        quizReady ? "text-green-700 text-base" : "text-blue-600 animate-pulse"
-                                    )}>
-                                        {quizReady ? "✓ Quiz is ready to begin" : "Generating AI questions..."}
+                                    <h3 className="text-xl font-bold text-slate-900">Quiz Generator</h3>
+                                    <p className="text-slate-500 font-medium">
+                                        {quizReady ? "Questions Generated" : "AI is creating your quiz..."}
                                     </p>
+                                </div>
+                                <div className="pt-2">
+                                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                                        <div className={cn(
+                                            "h-full bg-blue-600 transition-all duration-[2000ms] ease-out",
+                                            quizReady ? "w-full bg-green-500" : "w-2/3 animate-pulse"
+                                        )} />
+                                    </div>
                                 </div>
 
                                 {quizDetails && (
@@ -189,63 +195,68 @@ function QuizPreparationContent() {
                         {/* Monitoring Preparation Status */}
                         <Card className={cn(
                             "border-2 transition-all duration-500 shadow-xl",
-                            isModelReady ? "border-green-300 bg-gradient-to-br from-white to-green-50 shadow-green-100" : "border-blue-200 bg-white"
+                            isModelReady && isCalibrated ? "border-green-300 bg-gradient-to-br from-white to-green-50 shadow-green-100" : "border-indigo-200 bg-white"
                         )}>
                             <CardContent className="p-8 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <div className={cn(
                                         "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-all duration-500",
-                                        isModelReady ? "bg-green-500 shadow-green-200" : "bg-blue-500"
+                                        isModelReady && isCalibrated ? "bg-green-500 shadow-green-200" : "bg-indigo-500"
                                     )}>
-                                        {isModelReady ? (
-                                            <CheckCircle2 className="w-7 h-7 text-white" />
+                                        {isModelReady && isCalibrated ? (
+                                            <ShieldCheck className="w-7 h-7 text-white" />
                                         ) : (
-                                            <Loader2 className="w-7 h-7 text-white animate-spin" />
+                                            <ShieldCheck className="w-7 h-7 text-white animate-pulse" />
                                         )}
                                     </div>
-                                    {isModelReady && (
-                                        <Badge className="bg-green-500 text-white hover:bg-green-600 shadow-lg text-sm font-bold px-3 py-1">
-                                            ✓ Ready
-                                        </Badge>
-                                    )}
+                                    <Badge className={cn(
+                                        "text-white shadow-lg text-sm font-bold px-3 py-1",
+                                        isModelReady && isCalibrated ? "bg-green-500" : "bg-indigo-400"
+                                    )}>
+                                        {isModelReady && isCalibrated ? "✓ Monitoring Active" : "Initializing..."}
+                                    </Badge>
                                 </div>
 
                                 <div>
-                                    <h3 className="text-xl font-bold text-slate-900 mb-2">
-                                        Monitoring System
-                                    </h3>
-                                    <p className={cn(
-                                        "text-sm font-semibold transition-colors",
-                                        isModelReady ? "text-green-700 text-base" : "text-blue-600 animate-pulse"
-                                    )}>
-                                        {isModelReady ? "✓ AI monitoring is active" : "Initializing AI detectors..."}
+                                    <h3 className="text-xl font-bold text-slate-900">Monitoring System</h3>
+                                    <p className="text-slate-500 font-medium">
+                                        {isModelReady && isCalibrated ? "AI Proctoring Active" : "Initializing AI detectors..."}
                                     </p>
                                 </div>
 
-                                <div className="pt-4 border-t border-slate-100 space-y-2 text-xs">
+                                <div className="space-y-3 pt-2">
                                     <MonitoringCheckItem
-                                        icon={<Camera className="w-3.5 h-3.5" />}
+                                        icon={<Camera className="w-4 h-4" />}
                                         label="Camera Access"
                                         ready={diagnostics.some(d => d.includes("Camera"))}
                                     />
                                     <MonitoringCheckItem
-                                        icon={<Brain className="w-3.5 h-3.5" />}
-                                        label="Face Detection AI"
-                                        ready={diagnostics.some(d => d.includes("Face Detection Active"))}
+                                        icon={<Shield className="w-4 h-4" />}
+                                        label="AI Vision Engine"
+                                        ready={isModelReady}
                                     />
                                     <MonitoringCheckItem
-                                        icon={<Sparkles className="w-3.5 h-3.5" />}
-                                        label="Object Detection AI"
-                                        ready={diagnostics.some(d => d.includes("Object Detection Ready"))}
+                                        icon={<Eye className="w-4 h-4" />}
+                                        label="Gaze Calibration"
+                                        ready={isCalibrated}
                                     />
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
 
-                    {/* Hidden Camera Feed */}
-                    <div className="hidden">
-                        <video ref={videoRef} autoPlay playsInline muted />
+                    <div className="bg-white/50 backdrop-blur-sm p-4 rounded-xl border border-slate-200">
+                        <div className="flex gap-4">
+                            <div className="w-32 h-24 rounded-lg bg-black overflow-hidden shadow-md ring-2 ring-slate-200/50">
+                                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover scale-x-[-1]" />
+                            </div>
+                            <div className="flex-1 flex flex-col justify-center">
+                                <p className="text-sm font-bold text-slate-900 mb-1">Testing Camera Feed</p>
+                                <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                    Make sure your face is clearly visible and you are looking at the screen for calibration.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

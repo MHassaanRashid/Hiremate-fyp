@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
+import { Clock } from "lucide-react"
 import toast from "react-hot-toast"
 
 export default function ProfilePage() {
@@ -30,12 +31,14 @@ export default function ProfilePage() {
         skills: [],
         availability: {},
         preferredTimeSlots: [],
+        years_of_experience: 0,
         bio: "",
         linkedIn: "",
     })
 
     const [newExpertise, setNewExpertise] = useState("")
     const [newSkill, setNewSkill] = useState("")
+    const [newTimeSlot, setNewTimeSlot] = useState("")
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -54,6 +57,7 @@ export default function ProfilePage() {
                     skills: data.skills || [],
                     availability: data.availability || {},
                     preferredTimeSlots: data.preferredTimeSlots || [],
+                    years_of_experience: data.yearsOfExperience || 0,
                     bio: data.bio || "",
                     linkedIn: data.linkedIn || "",
                 })
@@ -130,7 +134,41 @@ export default function ProfilePage() {
         })
     }
 
+    const handleAddTimeSlot = () => {
+        if (newTimeSlot.trim() && !formData.preferredTimeSlots?.includes(newTimeSlot.trim())) {
+            setFormData({
+                ...formData,
+                preferredTimeSlots: [...(formData.preferredTimeSlots || []), newTimeSlot.trim()],
+            })
+            setNewTimeSlot("")
+        }
+    }
+
+    const handleRemoveTimeSlot = (item: string) => {
+        setFormData({
+            ...formData,
+            preferredTimeSlots: formData.preferredTimeSlots?.filter(t => t !== item),
+        })
+    }
+
     const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+    const EXPETISE_OPTIONS = [
+        "Frontend Development",
+        "Backend Development",
+        "Fullstack Development",
+        "Mobile App Development",
+        "UI/UX Design",
+        "DevOps & Cloud",
+        "Data Science & AI",
+        "Quality Assurance"
+    ]
+
+    const SKILL_OPTIONS = [
+        "React.js", "Next.js", "Node.js", "Python", "TypeScript",
+        "Java", "Docker", "Kubernetes", "PostgreSQL", "MongoDB",
+        "GraphQL", "AWS", "Flutter", "Swift", "C++", "Go"
+    ]
 
     if (authLoading || !user) {
         return (
@@ -207,6 +245,17 @@ export default function ProfilePage() {
                         <Input id="email" value={profile.email} disabled className="bg-slate-50" />
                     </div>
                     <div>
+                        <Label htmlFor="experience">Years of Experience</Label>
+                        <Input
+                            id="experience"
+                            type="number"
+                            min="0"
+                            value={formData.years_of_experience}
+                            onChange={(e) => setFormData({ ...formData, years_of_experience: parseInt(e.target.value) || 0 })}
+                            placeholder="e.g. 5"
+                        />
+                    </div>
+                    <div>
                         <Label htmlFor="bio">Bio</Label>
                         <Textarea
                             id="bio"
@@ -250,7 +299,23 @@ export default function ProfilePage() {
                         />
                         <Button onClick={handleAddExpertise} variant="outline">Add</Button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Add Expertise</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {EXPETISE_OPTIONS.filter(opt => !formData.expertise?.includes(opt)).map((opt) => (
+                                <button
+                                    key={opt}
+                                    onClick={() => setFormData({ ...formData, expertise: [...(formData.expertise || []), opt] })}
+                                    className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 hover:border-indigo-300 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                                >
+                                    + {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2">
                         {formData.expertise?.map((item, index) => (
                             <Badge
                                 key={index}
@@ -283,7 +348,23 @@ export default function ProfilePage() {
                         />
                         <Button onClick={handleAddSkill} variant="outline">Add</Button>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Quick Add Skills</Label>
+                        <div className="flex flex-wrap gap-2">
+                            {SKILL_OPTIONS.filter(opt => !formData.skills?.includes(opt)).map((opt) => (
+                                <button
+                                    key={opt}
+                                    onClick={() => setFormData({ ...formData, skills: [...(formData.skills || []), opt] })}
+                                    className="text-[11px] font-bold px-3 py-1.5 rounded-full border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                                >
+                                    + {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2">
                         {formData.skills?.map((item, index) => (
                             <Badge
                                 key={index}
@@ -306,25 +387,57 @@ export default function ProfilePage() {
                         Availability
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
                     <div className="space-y-3">
-                        {days.map((day) => (
-                            <div key={day} className="flex items-center space-x-2">
-                                <Checkbox
-                                    id={day}
-                                    checked={formData.availability?.[day as keyof typeof formData.availability] || false}
-                                    onCheckedChange={(checked) =>
-                                        handleAvailabilityChange(day, checked as boolean)
-                                    }
-                                />
-                                <Label
-                                    htmlFor={day}
-                                    className="text-sm font-medium capitalize cursor-pointer"
+                        <Label className="text-sm font-bold text-slate-700 uppercase tracking-tighter">Available Days</Label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {days.map((day) => (
+                                <div key={day} className="flex items-center space-x-2 p-2 rounded-lg border border-slate-100 bg-slate-50/50">
+                                    <Checkbox
+                                        id={day}
+                                        checked={formData.availability?.[day as keyof typeof formData.availability] || false}
+                                        onCheckedChange={(checked) =>
+                                            handleAvailabilityChange(day, checked as boolean)
+                                        }
+                                    />
+                                    <Label
+                                        htmlFor={day}
+                                        className="text-xs font-semibold capitalize cursor-pointer text-slate-600"
+                                    >
+                                        {day}
+                                    </Label>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                        <Label className="text-sm font-bold text-slate-700 uppercase tracking-tighter">Preferred Time Slots</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                value={newTimeSlot}
+                                onChange={(e) => setNewTimeSlot(e.target.value)}
+                                placeholder="e.g. 09:00 - 12:00"
+                                onKeyPress={(e) => e.key === 'Enter' && handleAddTimeSlot()}
+                            />
+                            <Button onClick={handleAddTimeSlot} variant="outline" className="border-indigo-200 text-indigo-600">Add Slot</Button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.preferredTimeSlots?.map((item, index) => (
+                                <Badge
+                                    key={index}
+                                    variant="outline"
+                                    className="bg-emerald-50 border-emerald-200 text-emerald-700 px-3 py-1.5 cursor-pointer hover:bg-emerald-100 transition-colors"
+                                    onClick={() => handleRemoveTimeSlot(item)}
                                 >
-                                    {day}
-                                </Label>
-                            </div>
-                        ))}
+                                    <Clock className="w-3 h-3 mr-1.5" />
+                                    {item} ×
+                                </Badge>
+                            ))}
+                            {(!formData.preferredTimeSlots || formData.preferredTimeSlots.length === 0) && (
+                                <p className="text-[10px] text-slate-400 font-medium italic">No preferred time slots added yet.</p>
+                            )}
+                        </div>
                     </div>
                 </CardContent>
             </Card>

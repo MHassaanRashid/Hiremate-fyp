@@ -17,6 +17,7 @@ from app.routers import (
     quiz,
     resume_analyzer_router as resume_analyzer,
     admin,
+    interview_workflow,
 )
 
 # Initialize FastAPI app
@@ -40,6 +41,7 @@ app.include_router(settings.router, prefix="/api/candidate/settings", tags=["Can
 app.include_router(jobs.router, prefix="/api/jobs", tags=["Jobs"])
 app.include_router(quiz.router, prefix="/api", tags=["Quiz"])
 app.include_router(resume_analyzer.router, prefix="/api/resume-analyzer", tags=["Resume Analyzer"])
+app.include_router(interview_workflow.router, prefix="/api", tags=["Interview Workflow"])
 
 # Root endpoint
 @app.get("/")

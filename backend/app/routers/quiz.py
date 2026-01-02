@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from app.core.extension import supabase_client
 from app.routers.auth_dependency import get_current_user
 from pydantic import BaseModel
@@ -27,6 +27,9 @@ class SubmitAnswerRequest(BaseModel):
 class TerminateQuizRequest(BaseModel):
     reason: str
     proof: str = None  # Base64 image
+    logs: List[dict] = [] # Proctoring logs
+
+class CompleteQuizRequest(BaseModel):
     logs: List[dict] = [] # Proctoring logs
 
 # =====================================================
@@ -249,6 +252,7 @@ async def submit_answer(
 @router.post("/{test_id}/complete")
 async def complete_test(
     test_id: str,
+    request: CompleteQuizRequest = Body(...),
     current_user = Depends(get_current_user)
 ):
     """Complete the test and get results"""
@@ -269,27 +273,45 @@ async def complete_test(
         score_percentage = (correct_count / test['total_questions']) * 100 if test['total_questions'] > 0 else 0
         passed = score_percentage >= 80.0
         
+        # Evaluation of "Clean Record"
+        violations = request.logs or []
+        total_violations = len(violations)
+        has_major_violation = any(v.get('type') in ['phone', 'multi-face'] for v in violations)
+        
+        # Clean record: less than 5 minor violations and NO major violations
+        clean_record = total_violations < 5 and not has_major_violation
+        
         # Update test
         supabase_client.table("candidate_tests").update({
             'correct_answers': correct_count,
             'score_percentage': score_percentage,
             'passed': passed,
             'status': 'completed',
-            'completed_at': datetime.utcnow().isoformat()
+            'completed_at': datetime.utcnow().isoformat(),
+            'proctoring_logs': violations,
+            # 'clean_record': clean_record  # Column missing in DB
         }).eq("id", test_id).execute()
         
-        # Update profile if passed (trigger should handle this, but doing it manually as backup)
-        if passed:
-            supabase_client.table("profiles").update({
-                'interview_eligible': True,
-                'test_status': 'passed',
-                'last_test_date': datetime.utcnow().isoformat()
-            }).eq("id", current_user.id).execute()
+        # Update profile if passed and clean record
+        interview_eligible = passed and clean_record
+        
+        profile_update = {
+            'test_status': 'passed' if passed else 'failed',
+            'last_test_date': datetime.utcnow().isoformat(),
+            'interview_eligible': interview_eligible
+        }
+        
+        supabase_client.table("profiles").update(profile_update).eq("id", current_user.id).execute()
+        
+        # If eligible, we could automatically trigger the first step of scheduling
+        # For now, we'll return the status so the frontend can redirect to scheduling
         
         return {
             'test_id': test_id,
             'score_percentage': float(score_percentage),
             'passed': passed,
+            'clean_record': clean_record,
+            'interview_eligible': interview_eligible,
             'correct_answers': correct_count,
             'total_questions': test['total_questions']
         }

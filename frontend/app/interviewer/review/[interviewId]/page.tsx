@@ -44,9 +44,11 @@ export default function ReviewInterviewPage() {
         communication: 5,
         problemSolving: 5,
         culturalFit: 5,
+        honestyScore: 10,
         overallRating: 5,
         strengths: "",
         weaknesses: "",
+        weakConcepts: "",
         recommendation: "maybe",
         comments: "",
     })
@@ -86,8 +88,9 @@ export default function ReviewInterviewPage() {
             evaluation.technicalSkills +
             evaluation.communication +
             evaluation.problemSolving +
-            evaluation.culturalFit
-        ) / 4
+            evaluation.culturalFit +
+            evaluation.honestyScore
+        ) / 5
         setEvaluation(prev => ({ ...prev, overallRating: Math.round(avg * 10) / 10 }))
     }, [
         evaluation.technicalSkills,
@@ -97,7 +100,7 @@ export default function ReviewInterviewPage() {
     ])
 
     const handleSubmit = async () => {
-        if (!evaluation.strengths || !evaluation.weaknesses || !evaluation.comments) {
+        if (!evaluation.strengths || !evaluation.weaknesses || !evaluation.weakConcepts || !evaluation.comments) {
             toast.error('Please fill in all required fields')
             return
         }
@@ -329,6 +332,13 @@ export default function ReviewInterviewPage() {
                                     setEvaluation({ ...evaluation, culturalFit: value })
                                 }
                             />
+                            <ScoreInput
+                                label="Honesty & Integrity"
+                                value={evaluation.honestyScore}
+                                onChange={(value) =>
+                                    setEvaluation({ ...evaluation, honestyScore: value })
+                                }
+                            />
 
                             {/* Overall Rating */}
                             <div className="pt-4 border-t">
@@ -381,13 +391,28 @@ export default function ReviewInterviewPage() {
                             {/* Weaknesses */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Weaknesses *
+                                    General Weaknesses *
                                 </label>
                                 <Textarea
                                     placeholder="What areas need improvement?"
                                     value={evaluation.weaknesses}
                                     onChange={(e) =>
                                         setEvaluation({ ...evaluation, weaknesses: e.target.value })
+                                    }
+                                    rows={3}
+                                />
+                            </div>
+
+                            {/* Weak Concepts */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Weak Technical Concepts *
+                                </label>
+                                <Textarea
+                                    placeholder="Which specific concepts was the candidate weak in?"
+                                    value={evaluation.weakConcepts}
+                                    onChange={(e) =>
+                                        setEvaluation({ ...evaluation, weakConcepts: e.target.value })
                                     }
                                     rows={3}
                                 />

@@ -100,13 +100,14 @@ export async function submitQuizAnswer(
 // Quiz Completion
 // =====================================================
 
-export async function completeQuiz(token: string, quizId: string) {
+export async function completeQuiz(token: string, quizId: string, logs: any[] = []) {
     const response = await fetch(`${API_URL}/quiz/${quizId}/complete`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({ logs })
     })
 
     if (!response.ok) {

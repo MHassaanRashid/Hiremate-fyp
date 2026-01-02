@@ -60,6 +60,44 @@ async def schedule_interview(
         print(e)
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/candidate")
+async def get_candidate_interviews(user=Depends(get_current_user)):
+    """
+    Fetch all interviews for the current logged-in candidate.
+    """
+    try:
+        user_id = user.id
+        
+        # Sort by scheduled_at ascending to show soonest first
+        res = supabase_client.table("interviews")\
+            .select("*")\
+            .eq("candidate_id", user_id)\
+            .order("scheduled_at", desc=False)\
+            .execute()
+        
+        # Format the response to match frontend expectations
+        # The frontend expects a 'recruiter' and 'job' object
+        formatted_interviews = []
+        for interview in (res.data or []):
+            formatted_interviews.append({
+                **interview,
+                "recruiter": {
+                    "full_name": interview.get("interviewer_name", "Interviewer"),
+                    "email": interview.get("interviewer_email", ""),
+                    "company_name": interview.get("company_name", "HireMate Partner"),
+                },
+                "job": {
+                    "job_title": interview.get("job_title", "Technical Interview")
+                }
+            })
+            
+        return {"interviews": formatted_interviews}
+    except Exception as e:
+        print(f"Error fetching candidate interviews: {e}")
+        import traceback
+        print(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/company")
 async def get_company_interviews(user=Depends(get_current_user)):
     try:
