@@ -10,6 +10,14 @@ import { useAuth } from "@/contexts/auth-context"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useEffect } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Info, CheckCircle2, Star, Users, Zap, Briefcase, Award, TrendingUp } from "lucide-react"
 
 interface AuthPageInnerProps {
   role: "candidate" | "company" | "interviewer"
@@ -71,11 +79,11 @@ export default function AuthPageInner({ role }: AuthPageInnerProps) {
     try {
       // Map frontend role to backend role
       const backendRole = role === "company" ? "recruiter" : role
-      const registrationData = { 
+      const registrationData = {
         full_name: formData.fullName,
         email: formData.email,
         password: formData.password,
-        role: backendRole 
+        role: backendRole
       }
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/signup`, {
@@ -118,6 +126,8 @@ export default function AuthPageInner({ role }: AuthPageInnerProps) {
     }
   }
 
+  const [isLearnMoreOpen, setIsLearnMoreOpen] = useState(false)
+
   const handleOAuthLogin = async (provider: "google") => {
     setIsSubmitting(true)
     try {
@@ -144,32 +154,157 @@ export default function AuthPageInner({ role }: AuthPageInnerProps) {
 
   const leftContent = {
     candidate: {
-      title: "Mock Interviews",
-      text: "Prepare with industry experts and get feedback that improves your chances of landing your dream job.",
+      title: "Elevate Your Career",
+      subtitle: "Master the Interview",
+      text: "Join thousands of candidates who use HireMate to prepare with industry experts and land their dream jobs.",
+      bg: "/auth/candidate_bg.png",
+      details: {
+        title: "For Candidates",
+        description: "HireMate is your ultimate career growth partner.",
+        features: [
+          "AI-Powered Technical Quizzes",
+          "Mock Interviews with Industry Experts",
+          "Detailed Performance Analytics",
+          "Direct Connection to Top Companies",
+        ],
+        stats: "10,000+ Candidates Hired",
+      }
     },
     company: {
-      title: "Business",
-      text: "Hire smarter with faster candidate evaluations powered by vetted interviewers.",
+      title: "Hiring Reimagined",
+      subtitle: "Scale with Confidence",
+      text: "Hire smarter and faster with our vetted interviewer network and automated screening tools.",
+      bg: "/auth/company_bg.png",
+      details: {
+        title: "For Businesses",
+        description: "Streamline your recruitment pipeline with HireMate.",
+        features: [
+          "Vetted Technical Interviewers",
+          "Automated Coding Assessments",
+          "Bias-Free Evaluation Reports",
+          "Integration with your ATS",
+        ],
+        stats: "60% Faster Time-to-Hire",
+      }
     },
     interviewer: {
-      title: "Interviewer",
-      text: "Join our network of expert interviewers and earn by sharing your knowledge.",
+      title: "Expert Network",
+      subtitle: "Share & Earn",
+      text: "Join an elite community of experts. Help companies find talent and earn by sharing your knowledge.",
+      bg: "/auth/interviewer_bg.png",
+      details: {
+        title: "For Interviewers",
+        description: "Turn your expertise into a rewarding side hustle.",
+        features: [
+          "Flexible Interview Scheduling",
+          "Competitive Compensation",
+          "Professional Networking",
+          "Impact Candidate Careers",
+        ],
+        stats: "$50,000+ Paid to Interviewers",
+      }
     },
   }
 
+  const roleContent = leftContent[role]
+
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Left Section (fixed) */}
-      <div className="w-1/2 bg-gray-100 p-8 flex flex-col justify-center sticky top-0 h-screen">
-        <h2 className="text-3xl font-bold text-gray-800 mb-4">{leftContent[role].title}</h2>
-        <p className="text-gray-600 mb-6">{leftContent[role].text}</p>
-        <a href="#" className="text-blue-600 text-sm">
-          Learn more →
-        </a>
+      <div className="hidden lg:flex w-1/2 relative flex-col justify-center p-12 text-white overflow-hidden">
+        {/* Background Image with Zoom Effect */}
+        <div
+          className="absolute inset-0 z-0 scale-105"
+          style={{
+            backgroundImage: `url('${roleContent.bg}')`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            filter: 'brightness(0.5)'
+          }}
+        />
+
+        {/* Modern Gradient Overlay */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-br from-blue-900/80 via-indigo-900/60 to-transparent" />
+
+        <div className="relative z-20 max-w-lg">
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-1 w-12 bg-blue-500 rounded-full" />
+            <span className="text-blue-400 font-bold tracking-widest uppercase text-sm">
+              {roleContent.subtitle}
+            </span>
+          </div>
+
+          <h2 className="text-5xl font-extrabold mb-6 leading-tight tracking-tight">
+            {roleContent.title}
+          </h2>
+
+          <p className="text-xl text-blue-50/90 mb-10 leading-relaxed font-light">
+            {roleContent.text}
+          </p>
+
+          <button
+            onClick={() => setIsLearnMoreOpen(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/30 rounded-full transition-all group font-medium"
+          >
+            Learn more about our platform
+            <Info className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+          </button>
+        </div>
+
       </div>
 
+      {/* Learn More Popup */}
+      <Dialog open={isLearnMoreOpen} onOpenChange={setIsLearnMoreOpen}>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border-0 shadow-2xl">
+          <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 text-white">
+            <DialogHeader className="text-left">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-4 backdrop-blur-sm">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <DialogTitle className="text-3xl font-bold">{roleContent.details.title}</DialogTitle>
+              <DialogDescription className="text-blue-100 text-lg">
+                {roleContent.details.description}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+
+          <div className="p-8 bg-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {roleContent.details.features.map((feature, i) => (
+                <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                  <span className="text-slate-700 font-medium text-sm">{feature}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-blue-50 rounded-2xl p-6 flex items-center justify-between border border-blue-100">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-blue-600 font-bold text-2xl leading-none">{roleContent.details.stats}</p>
+                  <p className="text-blue-700/70 text-sm font-medium">Proven platform success</p>
+                </div>
+              </div>
+              <Users className="w-12 h-12 text-blue-200" />
+            </div>
+          </div>
+
+          <div className="p-8 pt-0 bg-white">
+            <button
+              onClick={() => setIsLearnMoreOpen(false)}
+              className="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition-all shadow-lg"
+            >
+              Get Started Now
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Right Section (scrollable) */}
-      <div className="w-1/2 bg-white p-8 overflow-y-auto">
+      <div className="w-full lg:w-1/2 bg-white p-8 overflow-y-auto">
         <div className="max-w-md mx-auto">
           <div className="text-center mb-2">
             <Link href="/" className="flex items-center justify-center">

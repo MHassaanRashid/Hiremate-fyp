@@ -63,12 +63,15 @@ export default function QuizExecutionPage() {
         'multi-face': 2,
         'no-face': 5,
         'tab-blur': 5,
-        'head-pose': 8
+        'head-pose': 10
     };
 
     const handleProctoringTermination = useCallback(async (reason: string, proof: string, logs: any[] = []) => {
         setIsTerminated(true)
         setSubmitting(true)
+
+        // Ensure camera is off
+        stopCamera()
 
         try {
             const { data: { session } } = await supabase.auth.getSession()
@@ -86,33 +89,23 @@ export default function QuizExecutionPage() {
 
     const handleProctoringWarning = useCallback((count: number, reason: string, type: any) => {
         const typeStr = (type || 'focus') as keyof typeof violationCounts;
-        setWarningMsg(`${reason} (${typeStr})`);
 
         setViolationCounts(prev => {
             const newCounts = { ...prev, [typeStr]: prev[typeStr] + 1 };
             const currentCount = newCounts[typeStr];
             const threshold = terminationThresholds[typeStr as keyof typeof terminationThresholds];
 
-            toast(t => (
-                <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2 text-red-600">
-                        <ShieldAlert className="w-5 h-5" />
-                        <span className="font-bold uppercase text-[10px] tracking-widest">{typeStr} Warning</span>
-                    </div>
-                    <p className="text-xs text-slate-600 font-medium">{reason}</p>
-                    <div className="flex justify-between items-center mt-1 border-t border-slate-100 pt-1">
-                        <span className="text-[10px] font-black text-slate-400">{currentCount} / {threshold}</span>
-                        {currentCount >= threshold - 1 && <span className="text-[9px] text-red-500 font-bold animate-pulse">TERMINATION IMMINENT</span>}
-                    </div>
-                </div>
-            ), {
-                duration: 5000,
-                style: { borderLeft: '4px solid #ef4444', padding: '12px', borderRadius: '12px', background: 'white', border: '1px solid #fee2e2' }
-            });
+            // Set message for header display
+            setWarningMsg(`${reason} (${currentCount}/${threshold})`);
+
+            // Clear warning after 5 seconds
+            setTimeout(() => {
+                setWarningMsg(prev => prev.includes(reason) ? "" : prev);
+            }, 5000);
 
             return newCounts;
         });
-    }, []); // Removed dependency to avoid circularity if possible, but keep it simple
+    }, []);
 
     // Initialize Proctoring Hook (active immediately since preparation is complete)
     const isProctoringActive = !isCompleting && !isTerminated && !loading
@@ -162,32 +155,22 @@ export default function QuizExecutionPage() {
         }
     }, [violationCounts, handleProctoringTermination, violationLogs, captureProof]);
 
-    // Anti-Copy/Paste and Right Click Protection
+    // Fullscreen Exit Warning (Non-terminating)
     useEffect(() => {
-        if (loading) return;
-
-        const preventDefault = (e: any) => e.preventDefault();
-        const handleContextMenu = (e: MouseEvent) => {
-            e.preventDefault();
-            toast.error("Right-click is disabled during the assessment.");
-        };
-        const handleCopy = (e: ClipboardEvent) => {
-            e.preventDefault();
-            toast.error("Copying is not allowed.");
+        const handleFullscreenChange = () => {
+            if (!document.fullscreenElement && !isCompleting && !isTerminated && !loading) {
+                setWarningMsg("⚠️ FULLSCREEN EXITED! Please re-enter fullscreen immediately.");
+                toast.error("Fullscreen exited! This behavior is being logged.", { duration: 6000 });
+            } else if (document.fullscreenElement) {
+                setWarningMsg(prev => prev.includes("FULLSCREEN EXITED") ? "" : prev);
+            }
         };
 
-        document.addEventListener('copy', handleCopy);
-        document.addEventListener('paste', preventDefault);
-        document.addEventListener('cut', preventDefault);
-        document.addEventListener('contextmenu', handleContextMenu);
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, [isCompleting, isTerminated, loading]);
 
-        return () => {
-            document.removeEventListener('copy', handleCopy);
-            document.removeEventListener('paste', preventDefault);
-            document.removeEventListener('cut', preventDefault);
-            document.removeEventListener('contextmenu', handleContextMenu);
-        };
-    }, [loading]);
+    // Anti-Copy/Paste and Right Click Protection
 
     // Fullscreen is already active from prepare page
 
@@ -365,29 +348,36 @@ export default function QuizExecutionPage() {
                             )}
                         </div>
                         <div className="hidden sm:block">
-                            <h2 className="font-bold text-slate-900 text-sm tracking-tight">CheckMate AI</h2>
-                            <div className="flex items-center gap-2">
-                                <p className={cn(
-                                    "text-[10px] font-bold uppercase tracking-wider transition-colors",
-                                    proctoringStatus === 'warning' ? "text-red-600" : "text-blue-600"
-                                )}>
-                                    {proctoringStatus === 'warning'
-                                        ? (() => {
-                                            const type = warningMsg.match(/\((.*?)\)/)?.[1] || 'focus';
-                                            const count = violationCounts[type as keyof typeof violationCounts];
-                                            const threshold = terminationThresholds[type as keyof typeof terminationThresholds];
-                                            return `${type.replace('-', ' ')}: ${count}/${threshold}`;
-                                        })()
-                                        : 'Proctored Session'}
-                                </p>
-                                {proctoringStatus === 'warning' && (
-                                    <Badge variant="outline" className="h-4 px-1.5 text-[8px] bg-red-50 text-red-600 border-red-200 animate-pulse font-black">
-                                        WARNING
-                                    </Badge>
-                                )}
-                            </div>
+                            <h2 className="font-bold text-slate-900 text-sm tracking-tight leading-none mb-1">CheckMate AI</h2>
+                            <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Secure Session</p>
                         </div>
                     </div>
+
+                    {/* Centered Warning Message */}
+                    {warningMsg && (
+                        <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex items-center gap-3 bg-white px-5 py-2.5 rounded-2xl border-2 border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-in fade-in zoom-in slide-in-from-top-4 duration-300 z-[60]">
+                            <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center animate-pulse">
+                                <ShieldAlert className="w-5 h-5 text-red-600" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-red-700 uppercase tracking-widest leading-none mb-0.5">
+                                    Security Alert
+                                </span>
+                                <span className="text-xs font-bold text-slate-800 whitespace-nowrap">
+                                    {warningMsg}
+                                </span>
+                            </div>
+                            {warningMsg.includes("FULLSCREEN EXITED") && (
+                                <Button
+                                    size="sm"
+                                    className="h-8 px-4 bg-red-600 hover:bg-red-700 text-white text-[11px] font-black rounded-xl ml-2"
+                                    onClick={() => document.documentElement.requestFullscreen()}
+                                >
+                                    RE-ENTER
+                                </Button>
+                            )}
+                        </div>
+                    )}
 
                     <div className="flex items-center gap-4">
                         <div className={`flex items-center gap-2.5 px-4 py-2 rounded-lg border transition-all duration-300 ${timeLeft < 60 ? 'bg-red-50 border-red-200 text-red-600 animate-pulse' : 'bg-white border-slate-200 text-slate-700 shadow-sm'
@@ -527,6 +517,6 @@ export default function QuizExecutionPage() {
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

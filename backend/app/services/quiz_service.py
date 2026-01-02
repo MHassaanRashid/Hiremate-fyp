@@ -16,14 +16,14 @@ else:
 
 
 # List of models to try in order of preference
-# Using models/ prefix as required by the API
-# Prioritizing newer models likely to have available quota
+# Prioritizing Lite models which often have higher availability/quota
 PREFERRED_MODELS = [
-    "models/gemini-2.5-flash",          # Newest, likely has quota
-    "models/gemini-2.5-pro",             # Newest pro version
-    "models/gemini-2.0-flash-exp",       # Experimental, may work
-    "models/gemini-2.0-flash-lite-001",  # Lightweight alternative
-    "models/gemini-exp-1206",            # Experimental alternative
+    "gemini-2.0-flash-lite",      # Fast, lightweight, high availability
+    "gemini-flash-lite-latest",  # Stable lightweight
+    "gemini-flash-latest",       # Stable standard
+    "gemini-2.5-flash-lite",     # Newer lightweight
+    "gemini-2.5-flash",          # High performance
+    "gemini-2.0-flash",          # Next gen standard
 ]
 
 def generate_with_fallback(prompt: str):

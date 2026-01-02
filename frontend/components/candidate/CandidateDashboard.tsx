@@ -47,6 +47,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground";
+import { WelcomeModal } from './WelcomeModal';
 
 interface CandidateDashboardProps {
   profile: CandidateProfile;
@@ -137,6 +138,24 @@ export default function CandidateDashboard({
   isLoading = false,
 }: CandidateDashboardProps) {
   const router = useRouter();
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    // Check if this is a "new" candidate visit
+    const welcomeSeen = localStorage.getItem('welcome_modal_seen');
+
+    // Logic: If they haven't seen it yet AND either have no applications or low profile completion
+    const isNewCandidate = !welcomeSeen && (stats.applicationsSubmitted === 0 || Object.values(profileStrength).filter(Boolean).length <= 2);
+
+    if (isNewCandidate && !isLoading) {
+      setIsWelcomeModalOpen(true);
+    }
+  }, [isLoading, stats.applicationsSubmitted, profileStrength]);
+
+  const handleCloseWelcomeModal = () => {
+    setIsWelcomeModalOpen(false);
+    localStorage.setItem('welcome_modal_seen', 'true');
+  };
 
   if (isLoading) {
     return <DashboardSkeleton />;
