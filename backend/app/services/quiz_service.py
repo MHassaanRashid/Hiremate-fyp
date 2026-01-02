@@ -1,6 +1,6 @@
 import json
 import os
-from google import genai
+import google.generativeai as genai
 from dotenv import load_dotenv
 from typing import List, Dict
 
@@ -8,10 +8,12 @@ load_dotenv()
 
 # Initialize Gemini client
 # Note: GEMINI_API_KEY should be in your .env file
-client = None
 api_key = os.getenv("GEMINI_API_KEY")
 if api_key:
-    client = genai.Client(api_key=api_key)
+    genai.configure(api_key=api_key)
+    client = genai
+else:
+    client = None
 
 
 # List of models to try in order of preference
@@ -22,7 +24,7 @@ PREFERRED_MODELS = [
     "models/gemini-1.5-pro",
 ]
 
-def generate_with_fallback(client, prompt: str):
+def generate_with_fallback(prompt: str):
     """
     Attempts to generate content using a list of preferred models.
     Falls back to the next model if the current one fails.
@@ -40,10 +42,8 @@ def generate_with_fallback(client, prompt: str):
     for model_name in unique_models:
         try:
             print(f"Attempting to generate with model: {model_name}")
-            response = client.models.generate_content(
-                model=model_name,
-                contents=prompt
-            )
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
             print(f"Success with model: {model_name}")
             return response
         except Exception as e:
@@ -81,7 +81,7 @@ Ensure there are exactly {num_questions} questions. Keep options clear and disti
 Important: Return ONLY the raw JSON. No markdown, no code blocks, no preamble."""
 
     try:
-        response = generate_with_fallback(client, prompt)
+        response = generate_with_fallback(prompt)
         
         text = response.text.strip()
         

@@ -93,7 +93,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       const response = await fetch(`${API_URL}/auth/user`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "ngrok-skip-browser-warning": "69420"
+        },
       })
 
       if (response.ok) {
@@ -174,7 +177,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const res = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "69420"
+        },
         body: JSON.stringify({ email, password, role: backendRole }),
       })
       const data = await res.json()
@@ -280,6 +286,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         method: "GET",
         headers: {
           Authorization: `Bearer ${accessToken}`,
+          "ngrok-skip-browser-warning": "69420"
         },
       })
 

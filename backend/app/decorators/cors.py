@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 def setup(app: FastAPI):
     origins = [
-        "http://localhost:3000",  
+        "http://localhost:3000",
+        "https://hiremate-phi.vercel.app",
     ]
     
     app.add_middleware(
