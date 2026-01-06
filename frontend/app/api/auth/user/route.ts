@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       role = role.toLowerCase()
       if (role === 'company') role = 'recruiter'
       if (role === 'candidates') role = 'candidate'
-      if (!['candidate','recruiter','interviewer'].includes(role)) role = 'candidate'
+      if (!['candidate', 'recruiter', 'interviewer'].includes(role)) role = 'candidate'
     }
 
     // Get the authorization header from the request
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build the backend URL with role parameter if provided
-    let backendUrl = `${backendBase}/auth/user`
+    let backendUrl = `${backendBase}/api/auth/user`
     if (role) {
       backendUrl += `?role=${encodeURIComponent(role)}`
     }

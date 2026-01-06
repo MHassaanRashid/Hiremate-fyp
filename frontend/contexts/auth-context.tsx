@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import type { Provider } from "@supabase/supabase-js"
 
-if (!process.env.NEXT_PUBLIC_BACKEND_URL) {
-  throw new Error("Missing NEXT_PUBLIC_BACKEND_URL environment variable");
-}
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_URL = "/api";
 
 // Prevent duplicate session checks (e.g. React StrictMode double-invocation in dev)
 let hasSessionCheckRun = false;
@@ -278,7 +275,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // ✅ STEP 2: Call backend with role AS-IS
       const query = `?role=${encodeURIComponent(backendRole)}`
-      const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/user${query}`
+      const apiUrl = `/api/auth/user${query}`
       console.log(`📡 Backend API URL: ${apiUrl}`)
 
 

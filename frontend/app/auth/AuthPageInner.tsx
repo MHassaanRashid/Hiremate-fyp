@@ -86,7 +86,7 @@ export default function AuthPageInner({ role }: AuthPageInnerProps) {
         role: backendRole
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/signup`, {
+      const response = await fetch(`/api/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(registrationData),

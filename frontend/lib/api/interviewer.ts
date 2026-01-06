@@ -10,7 +10,7 @@ import type {
     UpdateInterviewerProfileRequest,
 } from '@/types/interviewer'
 
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+const API_URL = "/api"
 
 /**
  * Get interviewer dashboard data
