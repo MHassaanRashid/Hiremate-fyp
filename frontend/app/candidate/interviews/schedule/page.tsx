@@ -36,7 +36,7 @@ function SchedulingContent() {
             if (!token) throw new Error("No token found")
 
             // Fetch Profile to get tech stack
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const profRes = await fetch(`${backend}/profile`, {
                 headers: {
                     Authorization: `Bearer ${token}`,

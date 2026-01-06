@@ -45,7 +45,7 @@ export default function RecruiterDashboard() {
       const fetchDashboardData = async () => {
         try {
           // In a real scenario, use your API function here
-          const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+          const backend = "/api"
           const res = await fetch(`${backend}/dashboard/company`, {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("access_token")}`,

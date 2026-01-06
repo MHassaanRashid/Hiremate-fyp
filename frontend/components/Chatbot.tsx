@@ -44,10 +44,7 @@ export default function Chatbot() {
             if (!token && typeof window !== 'undefined') {
                 token = localStorage.getItem("access_token") || "";
             }
-            const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-            const cleanBaseUrl = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
-
-            const res = await fetch(`${cleanBaseUrl}/chatbot/ask?query=${encodeURIComponent(userMessage)}`, {
+            const res = await fetch(`/api/chatbot/ask?query=${encodeURIComponent(userMessage)}`, {
                 headers: {
                     "Authorization": token ? `Bearer ${token}` : "",
                     "ngrok-skip-browser-warning": "true",

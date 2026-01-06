@@ -120,7 +120,7 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
     const fetchData = async () => {
         try {
             setLoading(true)
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const token = localStorage.getItem("access_token")
 
             // Fetch Job Details
@@ -152,7 +152,7 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
 
     const confirmDelete = async () => {
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const res = await fetch(`${backend}/jobs/${params.id}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
@@ -170,7 +170,7 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
 
     const handleStatusUpdate = async (applicationId: string, status: string) => {
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const token = localStorage.getItem("access_token")
 
             const res = await fetch(`${backend}/jobs/applications/${applicationId}/status`, {
@@ -354,13 +354,13 @@ export default function JobDetailsPage({ params }: { params: { id: string } }) {
                                                                 <div className="h-1.5 w-16 bg-slate-100 rounded-full overflow-hidden">
                                                                     <div
                                                                         className={`h-full rounded-full ${app.ai_score > 80 ? 'bg-emerald-500' :
-                                                                                app.ai_score > 50 ? 'bg-amber-500' : 'bg-rose-500'
+                                                                            app.ai_score > 50 ? 'bg-amber-500' : 'bg-rose-500'
                                                                             }`}
                                                                         style={{ width: `${app.ai_score}%` }}
                                                                     ></div>
                                                                 </div>
                                                                 <span className={`text-xs font-bold ${app.ai_score > 80 ? 'text-emerald-600' :
-                                                                        app.ai_score > 50 ? 'text-amber-600' : 'text-rose-600'
+                                                                    app.ai_score > 50 ? 'text-amber-600' : 'text-rose-600'
                                                                     }`}>{app.ai_score}%</span>
                                                             </div>
                                                         ) : (

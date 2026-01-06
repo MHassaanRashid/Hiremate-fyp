@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api'
+const API_URL = '/api'
 
 export async function getAvailableSlots(token: string, techStack: string) {
     const response = await fetch(`${API_URL}/interview-workflow/available-slots?tech_stack=${encodeURIComponent(techStack)}`, {

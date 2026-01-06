@@ -69,7 +69,7 @@ export default function CandidateInterviewsPage() {
         try {
             setLoading(true)
             const token = localStorage.getItem("access_token")
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
 
             // Fetch Interviews
             const intRes = await fetch(`${backend}/interviews/candidate`, {

@@ -94,7 +94,7 @@ export default function MyJobsPage() {
     const fetchJobs = async () => {
         try {
             setLoading(true)
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const res = await fetch(`${backend}/jobs/company/my-jobs`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -122,7 +122,7 @@ export default function MyJobsPage() {
         if (!deleteId) return
 
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const res = await fetch(`${backend}/jobs/${deleteId}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }

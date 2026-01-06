@@ -51,7 +51,7 @@ export default function EditJobPage({ params }: { params: { id: string } }) {
 
     const fetchJobDetails = async () => {
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const res = await fetch(`${backend}/jobs/${params.id}`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
             })
@@ -89,7 +89,7 @@ export default function EditJobPage({ params }: { params: { id: string } }) {
         setError(null)
 
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
 
             const payload = {
                 ...formData,

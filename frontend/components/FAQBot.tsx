@@ -37,10 +37,7 @@ export default function FAQBot() {
     setIsLoading(true);
 
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
-      // Ensure we don't double up on /api if the base URL already has it
-      const cleanBaseUrl = baseUrl.endsWith("/api") ? baseUrl : `${baseUrl}/api`;
-      const res = await fetch(`${cleanBaseUrl}/faq/ask?query=${encodeURIComponent(userMessage)}`, {
+      const res = await fetch(`/api/faq/ask?query=${encodeURIComponent(userMessage)}`, {
         headers: {
           "ngrok-skip-browser-warning": "true",
         }

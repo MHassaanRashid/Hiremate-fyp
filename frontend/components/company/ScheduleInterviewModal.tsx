@@ -57,7 +57,7 @@ export default function ScheduleInterviewModal({
         setError(null)
 
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
 
             // Combine date and time
             const scheduledAt = new Date(`${formData.date}T${formData.time}:00`).toISOString()

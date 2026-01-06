@@ -91,7 +91,7 @@ export default function CandidatesPage() {
     const fetchApplications = async () => {
         try {
             setLoading(true)
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const token = localStorage.getItem("access_token")
 
             const res = await fetch(`${backend}/jobs/company/all-applications`, {
@@ -114,7 +114,7 @@ export default function CandidatesPage() {
 
     const handleStatusUpdate = async (applicationId: string, status: string) => {
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const token = localStorage.getItem("access_token")
 
             const res = await fetch(`${backend}/jobs/applications/${applicationId}/status`, {

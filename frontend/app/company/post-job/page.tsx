@@ -67,7 +67,7 @@ export default function PostJobPage() {
         setError(null)
 
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
 
             const payload = {
                 ...formData,

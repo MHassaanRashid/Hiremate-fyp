@@ -36,7 +36,7 @@ export default function CompanySettingsPage() {
     const fetchProfile = async () => {
         try {
             setLoading(true)
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const res = await fetch(`${backend}/profile`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
             })
@@ -77,7 +77,7 @@ export default function CompanySettingsPage() {
         setSuccess(false)
 
         try {
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
 
             const payload = {
                 company_logo: formData.company_logo,

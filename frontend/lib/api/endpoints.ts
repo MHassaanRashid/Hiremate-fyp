@@ -1,5 +1,5 @@
 // frontend/lib/api/endpoints.ts
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const BACKEND_URL = '/api';
 
 const RESUME_API_BASE = `${BACKEND_URL}/resume`;
 const DASHBOARD_API_BASE = `${BACKEND_URL}/dashboard`;

@@ -73,7 +73,7 @@ export default function CompanyInterviewsPage() {
     const fetchInterviews = async () => {
         try {
             setLoading(true)
-            const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001/api"
+            const backend = "/api"
             const res = await fetch(`${backend}/interviews/company`, {
                 headers: { Authorization: `Bearer ${localStorage.getItem("access_token")}` }
             })
