@@ -8,31 +8,14 @@ from schema.dashboard_schema import UpdateProfileStrengthRequest
 router = APIRouter()
 
 
-# ----------------------------
-# Helper function: Get current user
-# ----------------------------
-async def get_current_user(authorization: str = Header(None)) -> Any:
-    """Extract and validate user from JWT token"""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing token")
-    
-    token = authorization.split(" ")[1]
-    try:
-        from app.core.extension import supabase_client as supabase
-        user_response = supabase.auth.get_user(token)
-        user = getattr(user_response, "user", None) or user_response.get("user")
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+from app.routers.auth_dependency import get_current_user
 
 
 # ----------------------------
 # Routes
 # ----------------------------
 
-@router.get("/")
+@router.get("")
 async def get_dashboard_data(user=Depends(get_current_user)):
     """
     Get complete dashboard data for the authenticated candidate

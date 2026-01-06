@@ -8,12 +8,12 @@ const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_U
 
 async function proxyRequest(request: NextRequest, { params }: { params: { path: string[] } }) {
     try {
-        const pathSegments = await params.path
-        const path = pathSegments.join('/')
-        const { searchParams } = new URL(request.url)
+        const { pathname, searchParams } = request.nextUrl
+        const path = pathname.replace(/^\/api\/?/, '')
+        const pathSegments = path.split('/').filter(Boolean)
 
         // Normalization for auth/user requests (matching backend expectations)
-        if (pathSegments.join('/') === 'auth/user') {
+        if (path.startsWith('auth/user')) {
             let role = searchParams.get('role')
             if (role) {
                 role = role.toLowerCase()
@@ -28,12 +28,9 @@ async function proxyRequest(request: NextRequest, { params }: { params: { path: 
         const backendBase = BACKEND_URL.replace(/\/+$/, '').replace(/\/api$/, '')
 
         // Construct target URL. 
-        // Most of our backend routes already expect /api prefix, but since we are capturing /api/:path,
-        // we need to decide if we keep /api or not.
-        // In our backend, routes are like: @router.get("/languages") in quiz.py (prefix="quiz")
-        // and main.py includes it with prefix="/api".
-        // So the target MUST be /api/quiz/languages.
-        const targetUrl = `${backendBase}/api/${path}${queryString ? `?${queryString}` : ''}`
+        // We preserve the trailing slash from the original request if it existed.
+        const hasTrailingSlash = pathname.endsWith('/')
+        const targetUrl = `${backendBase}/api/${path}${hasTrailingSlash && !path.endsWith('/') ? '/' : ''}${queryString ? `?${queryString}` : ''}`
 
         console.log(`[Universal Proxy] ${request.method} -> ${targetUrl}`)
 
