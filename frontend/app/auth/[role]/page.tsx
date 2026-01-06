@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import AuthPageInner from "../AuthPageInner"
 import { redirect } from "next/navigation"
 
@@ -13,5 +14,13 @@ export default function AuthPage({ params }: AuthPageProps) {
   if (!allowed.includes(roleParam)) {
     redirect("/auth/candidate")
   }
-  return <AuthPageInner role={roleParam as "candidate" | "company" | "interviewer"} />
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-16 h-16 border-t-4 border-blue-500 rounded-full animate-spin"></div>
+      </div>
+    }>
+      <AuthPageInner role={roleParam as "candidate" | "company" | "interviewer"} />
+    </Suspense>
+  )
 }

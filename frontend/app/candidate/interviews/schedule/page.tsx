@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { getAvailableSlots, bookSlot } from "@/lib/api/interview-workflow"
@@ -12,7 +12,7 @@ import toast from "react-hot-toast"
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 import { format } from "date-fns"
 
-export default function CandidateSchedulingPage() {
+function SchedulingContent() {
     const { user, isLoading: authLoading } = useAuth()
     const router = useRouter()
     const searchParams = useSearchParams()
@@ -219,5 +219,17 @@ export default function CandidateSchedulingPage() {
                 </div>
             </div>
         </div>
+    )
+}
+
+export default function CandidateSchedulingPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-50">
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+            </div>
+        }>
+            <SchedulingContent />
+        </Suspense>
     )
 }
