@@ -67,9 +67,12 @@ pnpm-lock.yaml
 yarn.lock
 package-lock.json
 
-###########################
+# ###########################
 # Misc                    #
 ###########################
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Hugging Face Deployment Folder
+hiremate-backend/

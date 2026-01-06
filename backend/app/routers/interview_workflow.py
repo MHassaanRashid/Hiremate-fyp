@@ -22,9 +22,20 @@ async def get_available_slots(tech_stack: str, current_user = Depends(get_curren
     """
     try:
         # 1. Verify candidate is eligible
+        print(f"Checking eligibility for user: {current_user.id}")
         profile_res = supabase_client.table("profiles").select("interview_eligible").eq("id", current_user.id).single().execute()
-        if not profile_res.data or not profile_res.data.get('interview_eligible'):
-            raise HTTPException(status_code=403, detail="Candidate is not eligible for a live interview yet.")
+        
+        print(f"Profile data retrieved: {profile_res.data}")
+        
+        if not profile_res.data:
+            raise HTTPException(status_code=403, detail="Candidate profile not found. Please complete your profile first.")
+            
+        if not profile_res.data.get('interview_eligible'):
+            # Check why they are not eligible
+            raise HTTPException(
+                status_code=403, 
+                detail="Candidate is not eligible for a live interview yet. You must pass the AI assessment with a clean record first."
+            )
 
         # 2. Get matched interviewers
         interviewers = interview_service.get_available_interviewers(tech_stack)
@@ -65,9 +76,14 @@ async def book_slot(
     """
     try:
         # 1. Verify eligibility
+        print(f"Checking booking eligibility for user: {current_user.id}")
         profile_res = supabase_client.table("profiles").select("interview_eligible").eq("id", current_user.id).single().execute()
-        if not profile_res.data or not profile_res.data.get('interview_eligible'):
-            raise HTTPException(status_code=403, detail="Candidate is not eligible for booking.")
+        
+        if not profile_res.data:
+            raise HTTPException(status_code=403, detail="Candidate profile not found.")
+            
+        if not profile_res.data.get('interview_eligible'):
+            raise HTTPException(status_code=403, detail="Candidate is not eligible for booking. Please complete the assessment first.")
 
         # 2. Schedule via service
         result = interview_service.schedule_live_interview(

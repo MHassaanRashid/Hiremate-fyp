@@ -4,6 +4,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/contexts/auth-context'
 import { Toaster } from 'react-hot-toast'
+import Chatbot from '@/components/Chatbot'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           {children}
+          <Chatbot />
           <Toaster position="top-right" />
         </AuthProvider>
       </body>

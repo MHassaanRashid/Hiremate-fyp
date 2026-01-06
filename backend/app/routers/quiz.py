@@ -308,6 +308,7 @@ async def complete_test(
         clean_record = total_violations < 5 and not has_major_violation
         
         # Update test
+        print(f"Quiz completed for user {current_user.id}. Passed: {passed}, Clean Record: {clean_record}")
         supabase_client.table("candidate_tests").update({
             'correct_answers': correct_count,
             'score_percentage': score_percentage,
@@ -324,6 +325,7 @@ async def complete_test(
         was_eligible = current_profile.data.get('interview_eligible', False) if current_profile.data else False
         
         interview_eligible = (passed and clean_record) or was_eligible
+        print(f"User {current_user.id} eligibility: was_eligible={was_eligible} -> is_eligible={interview_eligible}")
         
         profile_update = {
             'test_status': 'passed' if (passed or was_eligible) else 'failed',
