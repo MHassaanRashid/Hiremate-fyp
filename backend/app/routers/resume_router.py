@@ -9,20 +9,7 @@ router = APIRouter()
 # ----------------------------
 # Helper function: Get current user
 # ----------------------------
-async def get_current_user(authorization: str = Header(None)) -> Any:
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Invalid or missing token")
-
-    token = authorization.split(" ")[1]
-    try:
-        from app.core.extension import supabase_client as supabase
-        user_response = supabase.auth.get_user(token)
-        user = getattr(user_response, "user", None) or user_response.get("user")
-        if not user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        return user
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+from app.routers.auth_dependency import get_current_user
 
 
 # ----------------------------
@@ -53,13 +40,13 @@ async def get_resume_section(section: str, user=Depends(get_current_user)):
     return ResumeService.get_resume_section(user, section)
 
 
-@router.get("/")
+@router.get("")
 async def get_resume(user=Depends(get_current_user)):
     """Retrieve full resume"""
     return ResumeService.get_resume(user)
 
 
-@router.delete("/")
+@router.delete("")
 async def delete_resume(user=Depends(get_current_user)):
     """Delete full resume"""
     return ResumeService.delete_resume(user)

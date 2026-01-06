@@ -7,12 +7,12 @@ from schema.applications_schema import (
     BulkApplicationsActionRequestSchema,
 )
 
-from app.routers.dashboard import get_current_user
+from app.routers.auth_dependency import get_current_user
 
 router = APIRouter()
 
 
-@router.get("/", response_model=ApplicationsListResponseSchema)
+@router.get("", response_model=ApplicationsListResponseSchema)
 async def list_applications(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),

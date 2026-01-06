@@ -6,7 +6,7 @@ router = APIRouter(prefix="/candidates", tags=["candidate-management"])
 
 
 # Get all candidates
-@router.get("/")
+@router.get("")
 async def get_candidates():
     try:
         response = supabase_client.table("candidates").select("*").execute()

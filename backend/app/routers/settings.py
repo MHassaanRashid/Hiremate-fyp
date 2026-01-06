@@ -11,7 +11,7 @@ from schema.settings_schema import (
     ExportDataResponseSchema,
 )
 from service.settings_service import SettingsService
-from app.routers.dashboard import get_current_user
+from app.routers.auth_dependency import get_current_user
 from app.core.extension import supabase_client as supabase
 
 router = APIRouter()

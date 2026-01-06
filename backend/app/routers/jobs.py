@@ -24,7 +24,7 @@ class JobResponse(BaseModel):
 class ApplyRequest(BaseModel):
     note: Optional[str] = None
 
-@router.get("/", response_model=List[JobResponse])
+@router.get("", response_model=List[JobResponse])
 def get_jobs(
     search: Optional[str] = None,
     location: Optional[str] = None,
@@ -59,7 +59,7 @@ class CreateJobRequest(BaseModel):
     requirements: Optional[List[str]] = None
     company_logo: Optional[str] = None
 
-@router.post("/", response_model=JobResponse)
+@router.post("", response_model=JobResponse)
 def create_job(job: CreateJobRequest, current_user: dict = Depends(get_current_user)):
     try:
         # User is an object, not a dict
