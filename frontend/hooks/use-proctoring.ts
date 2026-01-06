@@ -9,7 +9,8 @@ import {
     isGloballyInitializingModels,
     setGloballyInitializing,
     getBaselineGazeMetrics,
-    setBaselineGazeMetrics
+    setBaselineGazeMetrics,
+    cleanupGlobalModels
 } from './proctoring-models-singleton';
 
 export type ViolationType = 'phone' | 'focus' | 'multi-face' | 'no-face' | 'tab-blur' | 'head-pose';
@@ -45,8 +46,9 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
     const isMountedRef = useRef(true);
     const isClosingRef = useRef(false);
     const detectionHistoryRef = useRef<string[][]>([]);
+    const potentialProofsRef = useRef<Record<string, string>>({});
 
-    // Baseline Calibration (Recovered from singleton if available)
+    // baseline ...
     const baselineMetricsRef = useRef<{ x: number, y: number } | null>(getBaselineGazeMetrics());
     const calibrationStartTimeRef = useRef<number>(0);
     const calibrationSamplesRef = useRef<{ x: number, y: number }[]>([]);
@@ -93,7 +95,7 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
         onTerminateRef.current = onTerminate;
     }, [onWarning, onTerminate]);
 
-    const handleViolation = useCallback((reason: string, type: ViolationType) => {
+    const handleViolation = useCallback((reason: string, type: ViolationType, manualProof?: string) => {
         const now = Date.now();
         if (!isActiveRef.current) {
             console.log(`Proctoring: Suppression -> ${type}: ${reason}`);
@@ -106,7 +108,11 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
         lastWarningTimeRef.current = now;
         warningCountRef.current += 1;
 
-        const logEntry = { type, time: new Date().toISOString(), reason };
+        const proof = manualProof || potentialProofsRef.current[type] || captureProof();
+        // Clear the buffer
+        delete potentialProofsRef.current[type];
+
+        const logEntry = { type, time: new Date().toISOString(), reason, proof };
         logsRef.current.push(logEntry);
 
         if (isMountedRef.current) {
@@ -149,6 +155,7 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
             if (isActiveRef.current) {
                 if (noFaceStartTimeRef.current === 0) {
                     noFaceStartTimeRef.current = now;
+                    potentialProofsRef.current['no-face'] = captureProof();
                 } else if (now - noFaceStartTimeRef.current > 2000) {
                     handleViolation("No face detected.", 'no-face');
                     noFaceStartTimeRef.current = 0;
@@ -160,6 +167,7 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
             if (isActiveRef.current && faces.length > 1) {
                 if (multipleFaceStartTimeRef.current === 0) {
                     multipleFaceStartTimeRef.current = now;
+                    potentialProofsRef.current['multi-face'] = captureProof();
                 } else if (now - multipleFaceStartTimeRef.current > 1000) {
                     handleViolation("Multiple faces detected.", 'multi-face');
                     multipleFaceStartTimeRef.current = 0;
@@ -216,7 +224,10 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
                 const devY = Math.abs(avgY - b.y);
 
                 if (devX > 0.10 || devY > 0.12) {
-                    if (lookAwayStartTimeRef.current === 0) lookAwayStartTimeRef.current = now;
+                    if (lookAwayStartTimeRef.current === 0) {
+                        lookAwayStartTimeRef.current = now;
+                        potentialProofsRef.current['focus'] = captureProof();
+                    }
                     else if (now - lookAwayStartTimeRef.current > 1200) {
                         handleViolation("Looking away from screen.", 'focus');
                         lookAwayStartTimeRef.current = 0;
@@ -259,7 +270,10 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
                 }
 
                 if (detectedCheat) {
-                    if (phoneStartTimeRef.current === 0) phoneStartTimeRef.current = now;
+                    if (phoneStartTimeRef.current === 0) {
+                        phoneStartTimeRef.current = now;
+                        potentialProofsRef.current['phone'] = captureProof();
+                    }
                     else if (now - phoneStartTimeRef.current > 500) {
                         handleViolation("Unallowed object detected.", 'phone');
                         phoneStartTimeRef.current = 0;
@@ -360,21 +374,18 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
         return () => {
             isMountedRef.current = false;
             isClosingRef.current = true;
-            if (activeCameraRef.current) {
-                console.log("Proctoring: Releasing Camera Resource");
-                try {
-                    if (videoRef.current?.srcObject) {
-                        (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
-                    }
-                    if (activeCameraRef.current.stop) activeCameraRef.current.stop();
-                } catch (e) { }
-                activeCameraRef.current = null;
-            }
+            console.log("Proctoring: Unmounting - Triggering final cleanup");
+            cleanupGlobalModels();
         };
     }, []);
 
     useEffect(() => {
-        const handleBlur = () => isActiveRef.current && handleViolation("Window focus lost.", 'tab-blur');
+        const handleBlur = () => {
+            if (isActiveRef.current) {
+                potentialProofsRef.current['tab-blur'] = captureProof();
+                handleViolation("Window focus lost.", 'tab-blur');
+            }
+        };
         window.addEventListener('blur', handleBlur);
         return () => window.removeEventListener('blur', handleBlur);
     }, [handleViolation]);

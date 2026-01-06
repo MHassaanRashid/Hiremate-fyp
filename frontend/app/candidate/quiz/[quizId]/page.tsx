@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { uploadProctoringProof } from "@/lib/api/storage"
 import {
     Clock,
     ChevronRight,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react"
 import { getQuiz, submitQuizAnswer, completeQuiz, terminateQuiz } from "@/lib/api/quiz"
 import { supabase } from "@/lib/supabaseClient"
+import { cleanupGlobalModels } from "@/hooks/proctoring-models-singleton"
 import toast from "react-hot-toast"
 import { Progress } from "@/components/ui/progress"
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
@@ -57,6 +59,24 @@ export default function QuizExecutionPage() {
         'head-pose': 0
     });
 
+    const processViolationLogs = async (logs: any[]) => {
+        const processedLogs = [];
+        for (const log of logs) {
+            if (log.proof && log.proof.startsWith('data:image')) {
+                try {
+                    const url = await uploadProctoringProof(log.proof, quizId, log.type);
+                    processedLogs.push({ ...log, proof: url });
+                } catch (err) {
+                    console.error("Failed to upload individual violation proof:", err);
+                    processedLogs.push(log); // Keep base64 if upload fails (though it might hit body limits)
+                }
+            } else {
+                processedLogs.push(log);
+            }
+        }
+        return processedLogs;
+    };
+
     const terminationThresholds = {
         phone: 2,
         focus: 10,
@@ -65,6 +85,7 @@ export default function QuizExecutionPage() {
         'tab-blur': 5,
         'head-pose': 10
     };
+
 
     const handleProctoringTermination = useCallback(async (reason: string, proof: string, logs: any[] = []) => {
         setIsTerminated(true)
@@ -76,7 +97,25 @@ export default function QuizExecutionPage() {
         try {
             const { data: { session } } = await supabase.auth.getSession()
             if (session) {
-                await terminateQuiz(session.access_token, quizId, reason, proof, logs)
+                let proofUrl = proof;
+                let processedLogs = logs;
+
+                toast.loading("Uploading evidence artifacts...", { id: "uploading-evidence" });
+                try {
+                    // Upload termination proof
+                    if (proof && proof.startsWith('data:image')) {
+                        proofUrl = await uploadProctoringProof(proof, quizId, "termination");
+                    }
+                    // Upload individual violation logs
+                    processedLogs = await processViolationLogs(logs);
+
+                    toast.success("Evidence uploaded", { id: "uploading-evidence" });
+                } catch (uploadErr) {
+                    console.error("Evidence upload failed:", uploadErr);
+                    toast.error("Some snapshots failed to upload", { id: "uploading-evidence" });
+                }
+
+                await terminateQuiz(session.access_token, quizId, reason, proofUrl, processedLogs)
             }
             toast.error("Assessment Terminated due to proctoring violation.")
             router.push(`/candidate/quiz/${quizId}/report`)
@@ -259,6 +298,7 @@ export default function QuizExecutionPage() {
             stream.getTracks().forEach(track => track.stop())
             videoRef.current.srcObject = null
         }
+        cleanupGlobalModels();
     }
 
     const handleCompleteQuiz = async () => {
@@ -272,7 +312,14 @@ export default function QuizExecutionPage() {
             const { data: { session } } = await supabase.auth.getSession()
             if (!session) return
 
-            await completeQuiz(session.access_token, quizId, violationLogs)
+            let processedLogs = violationLogs;
+            if (violationLogs.length > 0) {
+                toast.loading("Uploading session logs...", { id: "upload-logs" });
+                processedLogs = await processViolationLogs(violationLogs);
+                toast.success("Logs uploaded", { id: "upload-logs" });
+            }
+
+            await completeQuiz(session.access_token, quizId, processedLogs)
             // Delay slightly to let the animation play/user perceive the "analysis"
             await new Promise(resolve => setTimeout(resolve, 2000))
 

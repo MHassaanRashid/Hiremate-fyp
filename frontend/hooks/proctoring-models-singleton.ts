@@ -42,6 +42,13 @@ export function cleanupGlobalModels() {
     if (globalModelInstance) {
         const { camera, faceMesh } = globalModelInstance
         try {
+            // Aggressively stop all tracks if possible
+            if (camera && camera.video) {
+                const stream = camera.video.srcObject as MediaStream;
+                if (stream && stream.getTracks) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            }
             if (camera && typeof camera.stop === 'function') camera.stop()
             if (faceMesh && typeof faceMesh.close === 'function') faceMesh.close()
         } catch (e) {
@@ -51,4 +58,5 @@ export function cleanupGlobalModels() {
     }
     globalObjectDetector = null
     isGloballyInitializing = false
+    baselineGazeMetrics = null
 }

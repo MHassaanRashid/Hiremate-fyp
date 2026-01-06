@@ -139,5 +139,6 @@ export interface TestHistory {
   language: string;
   score_percentage: number;
   passed: boolean;
+  status?: string;
   completed_at: string;
 }

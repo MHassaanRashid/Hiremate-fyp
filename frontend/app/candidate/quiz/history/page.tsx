@@ -100,9 +100,11 @@ export default function AssessmentHistoryPage() {
                                             {/* Status Icon */}
                                             <div className={cn(
                                                 "w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0 transition-transform group-hover:scale-110 duration-300",
-                                                test.passed ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-red-50 text-red-600 border border-red-100"
+                                                test.status === 'terminated' ? "bg-red-50 text-red-600 border border-red-100" :
+                                                    test.passed ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-50 text-slate-600 border border-slate-100"
                                             )}>
-                                                {test.passed ? <Award className="w-7 h-7" /> : <XCircle className="w-7 h-7" />}
+                                                {test.status === 'terminated' ? <ShieldAlert className="w-7 h-7" /> :
+                                                    test.passed ? <Award className="w-7 h-7" /> : <XCircle className="w-7 h-7" />}
                                             </div>
 
                                             {/* Assessment Info */}
@@ -113,9 +115,11 @@ export default function AssessmentHistoryPage() {
                                                     </h3>
                                                     <Badge className={cn(
                                                         "text-[10px] font-black uppercase tracking-widest",
-                                                        test.passed ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-red-100 text-red-700 hover:bg-red-100"
+                                                        test.status === 'terminated' ? "bg-red-600 text-white hover:bg-red-700" :
+                                                            test.passed ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-slate-100 text-slate-700 hover:bg-slate-100"
                                                     )}>
-                                                        {test.passed ? "Verified" : "Attempted"}
+                                                        {test.status === 'terminated' ? "Terminated" :
+                                                            test.passed ? "Verified" : "Attempted"}
                                                     </Badge>
                                                 </div>
                                                 <div className="flex flex-wrap items-center gap-y-1 gap-x-4">

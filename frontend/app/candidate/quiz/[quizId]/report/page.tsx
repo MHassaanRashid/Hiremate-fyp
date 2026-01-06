@@ -233,6 +233,14 @@ export default function QuizReportPage() {
                                                         <div>
                                                             <p className="text-sm font-bold text-slate-900 leading-tight capitalize">{log.type.replace('-', ' ')} Violation</p>
                                                             <p className="text-[10px] text-slate-500 font-medium">{log.reason}</p>
+                                                            {log.proof && (
+                                                                <div className="mt-2 group/proof relative w-20 h-12 rounded-lg overflow-hidden border border-slate-200 bg-black cursor-zoom-in" onClick={() => window.open(log.proof, '_blank')}>
+                                                                    <img src={log.proof} alt="Proof" className="w-full h-full object-cover opacity-80 group-hover/proof:opacity-100 transition-opacity" />
+                                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/proof:opacity-100 bg-black/40 transition-opacity">
+                                                                        <Video className="w-3 h-3 text-white" />
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     <div className="text-right">

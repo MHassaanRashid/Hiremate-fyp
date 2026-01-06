@@ -174,7 +174,7 @@ async def get_test_history(
     try:
         tests_res = supabase_client.table("candidate_tests").select("*").eq(
             "candidate_id", str(current_user.id)
-        ).eq("status", "completed").order("completed_at", desc=True).execute()
+        ).neq("status", "in_progress").order("completed_at", desc=True).execute()
         
         return {
             'tests': [
@@ -183,6 +183,7 @@ async def get_test_history(
                     'language': t['language'],
                     'score_percentage': float(t.get('score_percentage') or 0),
                     'passed': t.get('passed', False),
+                    'status': t.get('status'),
                     'completed_at': t.get('completed_at')
                 }
                 for t in (tests_res.data or [])

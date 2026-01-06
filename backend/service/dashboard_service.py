@@ -281,21 +281,26 @@ class DashboardService:
         ]
         
         # Update or create profile strength record
-        existing_strength = supabase.table("candidate_profile_strength").select("*").eq("user_id", user_id).execute()
-        
-        strength_record = {
-            "candidate_id": user_id,
-            "user_id": user_id,  # Include both to satisfy constraints
-            **strength_calc,
-            "last_calculated": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        if existing_strength.data:
-            supabase.table("candidate_profile_strength").update(strength_record).eq("user_id", user_id).execute()
-        else:
-            strength_record["created_at"] = datetime.utcnow().isoformat()
-            supabase.table("candidate_profile_strength").insert(strength_record).execute()
+        try:
+            existing_strength = supabase.table("candidate_profile_strength").select("*").eq("user_id", user_id).execute()
+            
+            strength_record = {
+                "candidate_id": user_id,
+                "user_id": user_id,  # Include both to satisfy constraints
+                **strength_calc,
+                "last_calculated": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            if existing_strength.data:
+                supabase.table("candidate_profile_strength").update(strength_record).eq("user_id", user_id).execute()
+            else:
+                strength_record["created_at"] = datetime.utcnow().isoformat()
+                supabase.table("candidate_profile_strength").insert(strength_record).execute()
+        except Exception as e:
+            # Log error but don't crash the whole dashboard fetch
+            import logging
+            logging.getLogger(__name__).error(f"Failed to update candidate_profile_strength for user {user_id}: {str(e)}")
         
         profile_strength = ProfileStrengthSchema(
             resume=strength_calc["has_resume"],
@@ -345,20 +350,26 @@ class DashboardService:
         strength_calc = DashboardService.calculate_profile_strength(profile_data, resume_data)
         
         # Update database
-        strength_record = {
-            **strength_calc,
-            "last_calculated": datetime.utcnow().isoformat(),
-            "updated_at": datetime.utcnow().isoformat()
-        }
-        
-        existing = supabase.table("candidate_profile_strength").select("id").eq("user_id", user_id).execute()
-        if existing.data:
-            supabase.table("candidate_profile_strength").update(strength_record).eq("user_id", user_id).execute()
-        else:
-            strength_record["candidate_id"] = user_id
-            strength_record["user_id"] = user_id
-            strength_record["created_at"] = datetime.utcnow().isoformat()
-            supabase.table("candidate_profile_strength").insert(strength_record).execute()
+        try:
+            strength_record = {
+                **strength_calc,
+                "last_calculated": datetime.utcnow().isoformat(),
+                "updated_at": datetime.utcnow().isoformat()
+            }
+            
+            existing = supabase.table("candidate_profile_strength").select("id").eq("user_id", user_id).execute()
+            if existing.data:
+                supabase.table("candidate_profile_strength").update(strength_record).eq("user_id", user_id).execute()
+            else:
+                strength_record["candidate_id"] = user_id
+                strength_record["user_id"] = user_id
+                strength_record["created_at"] = datetime.utcnow().isoformat()
+                supabase.table("candidate_profile_strength").insert(strength_record).execute()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Manual update of candidate_profile_strength failed for user {user_id}: {str(e)}")
+            # For manual update, we might want to re-raise or return error in message
+            return {"message": f"Profile strength update failed: {str(e)}", "overall_score": strength_calc["overall_score"]}
         
         return {"message": "Profile strength updated successfully", "overall_score": strength_calc["overall_score"]}
 
