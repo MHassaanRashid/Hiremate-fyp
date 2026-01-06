@@ -9,15 +9,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  async rewrites() {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001'
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ]
-  },
+  // Rewrites removed in favor of /api/[...path]/route.ts proxy for better reliability on Vercel
 }
 
 export default nextConfig
