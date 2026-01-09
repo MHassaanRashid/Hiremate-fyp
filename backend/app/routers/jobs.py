@@ -97,16 +97,35 @@ def get_my_jobs(current_user: dict = Depends(get_current_user)):
 @router.get("/company/jobs/{job_id}/applications")
 def get_job_applications(job_id: str, current_user: dict = Depends(get_current_user)):
     try:
-        user_id = getattr(current_user, "id", None) or current_user.get("id")
-        return JobsService.get_applications_for_job(job_id, user_id)
+        return JobsService.get_applications_for_job(job_id, current_user)
     except Exception as e:
          raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/company/all-applications")
 def get_all_applications(current_user: dict = Depends(get_current_user)):
     try:
-        user_id = getattr(current_user, "id", None) or current_user.get("id")
-        return JobsService.get_all_applications_for_recruiter(user_id)
+        return JobsService.get_all_applications_for_recruiter(current_user)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/applications/{application_id}/details")
+def get_application_details(application_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        return JobsService.get_candidate_application_details(application_id, current_user)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/company/talent-pool")
+def get_talent_pool(current_user: dict = Depends(get_current_user)):
+    try:
+        return JobsService.get_all_candidates_list(current_user)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/company/candidates/{candidate_id}/profile")
+def get_candidate_profile(candidate_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        return JobsService.get_candidate_profile_details(candidate_id, current_user)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

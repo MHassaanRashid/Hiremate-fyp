@@ -76,10 +76,18 @@ export default function QuizSelectionPage() {
 
     const fetchLanguages = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
-                const data = await getQuizLanguages(session.access_token)
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                const data = await getQuizLanguages(token)
                 setLanguages(data)
+            } else {
+                console.error("No access token found in localStorage")
+                // Fallback to supabase session if available
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    const data = await getQuizLanguages(session.access_token)
+                    setLanguages(data)
+                }
             }
         } catch (error) {
             console.error("Error fetching languages:", error)

@@ -224,6 +224,7 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
                 const devY = Math.abs(avgY - b.y);
 
                 if (devX > 0.10 || devY > 0.12) {
+                    console.log(`Proctoring: Gaze Deviation X:${devX.toFixed(3)} Y:${devY.toFixed(3)} (Threshold X:0.10 Y:0.12)`);
                     if (lookAwayStartTimeRef.current === 0) {
                         lookAwayStartTimeRef.current = now;
                         potentialProofsRef.current['focus'] = captureProof();
@@ -241,13 +242,14 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
                 const headX = Math.abs(nose.x - (lCrit.x + rCrit.x) / 2) / (rCrit.x - lCrit.x);
                 const headY = Math.abs(nose.y - (fore.y + chin.y) / 2) / (chin.y - fore.y);
                 if (headX > 0.22 || headY > 0.13) {
+                    console.log(`Proctoring: Head Move X:${headX.toFixed(3)} Y:${headY.toFixed(3)} (Threshold X:0.22 Y:0.13)`);
                     handleViolation("Head movement detected.", 'head-pose');
                 }
             }
         }
 
         // --- Object Detection ---
-        if (isActiveRef.current && objectDetectorRef.current && now - lastObjectCheckTimeRef.current > 1000 && videoRef.current?.readyState === 4) {
+        if (isActiveRef.current && objectDetectorRef.current && now - lastObjectCheckTimeRef.current > 400 && videoRef.current?.readyState === 4) {
             lastObjectCheckTimeRef.current = now;
             try {
                 const detections = await objectDetectorRef.current.detect(videoRef.current);
@@ -274,7 +276,7 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
                         phoneStartTimeRef.current = now;
                         potentialProofsRef.current['phone'] = captureProof();
                     }
-                    else if (now - phoneStartTimeRef.current > 500) {
+                    else if (now - phoneStartTimeRef.current > 200) {
                         handleViolation("Unallowed object detected.", 'phone');
                         phoneStartTimeRef.current = 0;
                         detectionHistoryRef.current = [];
@@ -325,7 +327,7 @@ export function useProctoring({ videoRef, isActive, onWarning, onTerminate }: Us
                         cocoSsd.load({ base: 'lite_mobilenet_v2' })
                     ]);
 
-                    faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4/${f}` });
+                    faceMesh = new FaceMesh({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/${f}` });
                     faceMesh.setOptions({ maxNumFaces: 2, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
                     detector = cocoModel;
                     setGlobalObjectDetector(detector);

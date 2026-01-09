@@ -212,7 +212,7 @@ async def get_interview_details(interview_id: str, user=Depends(get_current_user
             scheduled_date = ""
             scheduled_time = ""
         
-        return {
+        response_data = {
             "id": interview["id"],
             "candidate": {
                 "id": interview["candidate_id"],
@@ -236,6 +236,12 @@ async def get_interview_details(interview_id: str, user=Depends(get_current_user
             "notes": interview.get("notes", ""),
             "startedAt": interview.get("created_at"),
         }
+        
+        # Record view
+        from service.dashboard_service import DashboardService
+        DashboardService.record_profile_views([interview["candidate_id"]], user)
+
+        return response_data
     except HTTPException:
         raise
     except Exception as e:
@@ -323,7 +329,7 @@ async def get_interview_review(interview_id: str, user=Depends(get_current_user)
             except:
                 pass
         
-        return {
+        response_data = {
             "id": interview["id"],
             "candidate": {
                 "id": interview["candidate_id"],
@@ -345,6 +351,12 @@ async def get_interview_review(interview_id: str, user=Depends(get_current_user)
             "interviewerNotes": interview.get("notes", ""),
             "existingEvaluation": existing_evaluation,
         }
+        
+        # Record view
+        from service.dashboard_service import DashboardService
+        DashboardService.record_profile_views([interview["candidate_id"]], user)
+
+        return response_data
     except HTTPException:
         raise
     except Exception as e:

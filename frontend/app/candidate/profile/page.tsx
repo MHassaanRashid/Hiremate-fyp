@@ -153,12 +153,19 @@ export default function CandidateProfilePage() {
         setLoading(true)
 
         // Check if user signed in with Google
-        const { data: { session } } = await supabase.auth.getSession()
-        const provider = session?.user?.app_metadata?.provider
+        let provider = null
+        const token = localStorage.getItem("access_token")
+
+        if (token) {
+          const { data: { user: supabaseUser } } = await supabase.auth.getUser(token)
+          provider = supabaseUser?.app_metadata?.provider
+        } else {
+          const { data: { session } } = await supabase.auth.getSession()
+          provider = session?.user?.app_metadata?.provider
+        }
         setIsGoogleUser(provider === 'google')
 
         // Fetch profile from backend API
-        const token = localStorage.getItem("access_token")
         if (token) {
           try {
             const response = await fetch("/api/candidate/settings/profile", {

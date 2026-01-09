@@ -39,23 +39,49 @@ export function setBaselineGazeMetrics(metrics: { x: number, y: number } | null)
 }
 
 export function cleanupGlobalModels() {
+    console.log("Proctoring: Global cleanup initiated...");
     if (globalModelInstance) {
         const { camera, faceMesh } = globalModelInstance
         try {
-            // Aggressively stop all tracks if possible
-            if (camera && camera.video) {
-                const stream = camera.video.srcObject as MediaStream;
-                if (stream && stream.getTracks) {
-                    stream.getTracks().forEach(track => track.stop());
-                }
+            if (camera && typeof camera.stop === 'function') {
+                camera.stop()
             }
-            if (camera && typeof camera.stop === 'function') camera.stop()
-            if (faceMesh && typeof faceMesh.close === 'function') faceMesh.close()
+            if (faceMesh && typeof faceMesh.close === 'function') {
+                faceMesh.close()
+            }
         } catch (e) {
-            console.error("Cleanup error:", e)
+            console.error("Cleanup error in models:", e)
         }
         globalModelInstance = null
     }
+
+    // Aggressive: Stop ALL media tracks in the entire window as a safety measure
+    try {
+        if (typeof window !== 'undefined' && navigator.mediaDevices) {
+            navigator.mediaDevices.enumerateDevices().then(() => {
+                // This is a bit hacky but covers all bases if tracks aren't linked to camera object
+                const stopAllTracks = (stream: MediaStream) => {
+                    stream.getTracks().forEach(track => {
+                        track.stop();
+                        console.log(`Proctoring: Stopped track: ${track.label}`);
+                    });
+                };
+
+                // Try to find any active streams
+                // We can't easily listed all streams, but we can try to get them if they were attached to video elements
+                document.querySelectorAll('video').forEach(video => {
+                    const stream = video.srcObject as MediaStream;
+                    if (stream && typeof stream.getTracks === 'function') {
+                        stopAllTracks(stream);
+                        video.srcObject = null;
+                    }
+                });
+            });
+        }
+    } catch (e) {
+        console.error("Proctoring: Aggressive cleanup failed:", e);
+    }
+
     globalObjectDetector = null
     isGloballyInitializing = false
     baselineGazeMetrics = null

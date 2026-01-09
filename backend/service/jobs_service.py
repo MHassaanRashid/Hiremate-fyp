@@ -1,5 +1,6 @@
 from app.core.extension import supabase_client as supabase
 from datetime import datetime
+from typing import Any
 
 class JobsService:
     @staticmethod
@@ -134,8 +135,12 @@ class JobsService:
             return []
 
     @staticmethod
-    def get_applications_for_job(job_id: str, user_id: str):
+    def get_applications_for_job(job_id: str, viewer_user: Any):
         try:
+            user_id = getattr(viewer_user, "id", None)
+            if not user_id and isinstance(viewer_user, dict):
+                user_id = viewer_user.get("id")
+
             # 1. Verify job belongs to user
             job = supabase.table("jobs").select("user_id").eq("id", job_id).single().execute()
             if not job.data or job.data["user_id"] != user_id:
@@ -197,6 +202,10 @@ class JobsService:
                         app["candidate_projects"] = resume.get("projects_json", [])
                         app["candidate_certificates"] = resume.get("certificates_json", [])
 
+            # Record views for these candidates
+            from service.dashboard_service import DashboardService
+            DashboardService.record_profile_views(user_ids, viewer_user)
+
             return applications
         except Exception as e:
             print(f"Error fetching applications: {e}")
@@ -256,8 +265,12 @@ class JobsService:
             print(f"Error updating application status: {e}")
             raise e
     @staticmethod
-    def get_all_applications_for_recruiter(user_id: str):
+    def get_all_applications_for_recruiter(viewer_user: Any):
         try:
+            user_id = getattr(viewer_user, "id", None)
+            if not user_id and isinstance(viewer_user, dict):
+                user_id = viewer_user.get("id")
+
             # 1. Get all job IDs belonging to this recruiter
             jobs_res = supabase.table("jobs").select("id").eq("user_id", user_id).execute()
             job_ids = [job["id"] for job in jobs_res.data]
@@ -289,7 +302,186 @@ class JobsService:
                     app["candidate_email"] = profile.get("email")
                     app["ai_score"] = profile.get("ai_score", 0)
                 
+            # Record views for these candidates
+            from service.dashboard_service import DashboardService
+            DashboardService.record_profile_views(candidate_ids, viewer_user)
+
             return applications
         except Exception as e:
             print(f"Error fetching all recruiter applications: {e}")
+            raise e
+
+    @staticmethod
+    def get_candidate_application_details(application_id: str, viewer_user: Any):
+        try:
+            viewer_id = getattr(viewer_user, "id", None)
+            if not viewer_id and isinstance(viewer_user, dict):
+                viewer_id = viewer_user.get("id")
+
+            # 1. Fetch Application & Job info
+            app_res = supabase.table("applications")\
+                .select("*, jobs(title, company_id)")\
+                .eq("id", application_id)\
+                .single().execute()
+            
+            if not app_res.data:
+                raise Exception("Application not found")
+            
+            application = app_res.data
+            candidate_id = application.get("user_id")
+
+            # 2. Fetch Candidate Profile & Resume
+            profile_res = supabase.table("profiles").select("*").eq("id", candidate_id).single().execute()
+            resume_res = supabase.table("resume").select("*").eq("id", candidate_id).single().execute()
+
+            # 3. Fetch AI Quiz Reports (Completed only)
+            quiz_res = supabase.table("candidate_tests")\
+                .select("*, test_answers(*, test_questions(*))")\
+                .eq("candidate_id", candidate_id)\
+                .eq("status", "completed")\
+                .order("completed_at", desc=True)\
+                .execute()
+
+            # 4. Fetch Interview Reports
+            interviews_res = supabase.table("interviews")\
+                .select("*")\
+                .eq("application_id", application_id)\
+                .order("scheduled_date", desc=True)\
+                .execute()
+
+            # Record a profile view as well
+            from service.dashboard_service import DashboardService
+            DashboardService.record_profile_views([candidate_id], viewer_user)
+
+            return {
+                "application": application,
+                "profile": profile_res.data,
+                "resume": resume_res.data,
+                "quizzes": quiz_res.data or [],
+                "interviews": interviews_res.data or []
+            }
+        except Exception as e:
+            print(f"Error fetching candidate details: {e}")
+            raise e
+
+    @staticmethod
+    def get_all_candidates_list(viewer_user: Any = None):
+        try:
+            # 1. Fetch all profiles with role 'candidate'
+            profiles_res = supabase.table("profiles")\
+                .select("*")\
+                .eq("role", "candidate")\
+                .order("created_at", desc=True)\
+                .execute()
+            
+            profiles = profiles_res.data or []
+            if not profiles:
+                return []
+
+            # 2. Fetch all resume data 
+            resumes_res = supabase.table("resume").select("id, skills_json, experience_json").execute()
+            resume_map = {r["id"]: r for r in (resumes_res.data or [])}
+
+            # 3. Fetch count of completed quizzes for all candidates
+            quizzes_res = supabase.table("candidate_tests")\
+                .select("candidate_id")\
+                .eq("status", "completed")\
+                .execute()
+            
+            from collections import Counter
+            quiz_counts = Counter(q["candidate_id"] for q in (quizzes_res.data or []))
+
+            # 4. Fetch interviews count
+            interviews_res = supabase.table("interviews")\
+                .select("candidate_id")\
+                .execute()
+            interview_counts = Counter(i["candidate_id"] for i in (interviews_res.data or []))
+
+            # 5. Map profiles to a friendly format
+            candidates = []
+            for profile in profiles:
+                pid = profile.get("id")
+                resume = resume_map.get(pid)
+                
+                # Extract skills from either profile or resume_json
+                skills = []
+                if resume and resume.get("skills_json"):
+                    s_json = resume["skills_json"]
+                    if isinstance(s_json, list): skills = s_json
+                    elif isinstance(s_json, dict): skills = s_json.get("items", [])
+                
+                if not skills and profile.get("skills"):
+                    skills = profile.get("skills")
+
+                # Extract top experience
+                top_exp = "Modern Talent"
+                if resume and resume.get("experience_json"):
+                    exp_list = resume["experience_json"]
+                    if isinstance(exp_list, list) and len(exp_list) > 0:
+                        top_exp = exp_list[0].get("position", exp_list[0].get("title", "Modern Talent"))
+
+                candidates.append({
+                    "id": pid,
+                    "name": profile.get("full_name"),
+                    "email": profile.get("email"),
+                    "location": profile.get("location") or "Remote / Global",
+                    "summary": profile.get("summary"),
+                    "skills": skills,
+                    "avatar": profile.get("avatar_url"),
+                    "title": top_exp,
+                    "has_resume": pid in resume_map,
+                    "quiz_count": quiz_counts.get(pid, 0),
+                    "interview_count": interview_counts.get(pid, 0),
+                    "has_quiz": quiz_counts.get(pid, 0) > 0,
+                    "has_interview": interview_counts.get(pid, 0) > 0
+                })
+            
+            return candidates
+        except Exception as e:
+            print(f"Error fetching all candidates: {e}")
+            raise e
+
+    @staticmethod
+    def get_candidate_profile_details(candidate_id: str, viewer_user: Any = None):
+        try:
+            # 1. Fetch Candidate Profile (Don't use .single() to avoid error on 0 rows)
+            profile_res = supabase.table("profiles").select("*").eq("id", candidate_id).execute()
+            profile_data = profile_res.data[0] if profile_res.data else None
+
+            # 2. Fetch Candidate Resume
+            resume_res = supabase.table("resume").select("*").eq("id", candidate_id).execute()
+            resume_data = resume_res.data[0] if resume_res.data else None
+
+            # 3. Fetch AI Quiz Reports (Completed only)
+            quiz_res = supabase.table("candidate_tests")\
+                .select("*, test_answers(*)")\
+                .eq("candidate_id", candidate_id)\
+                .eq("status", "completed")\
+                .order("completed_at", desc=True)\
+                .execute()
+
+            # 4. Fetch any existing applications (Fetch job_title directly from job_applications if available)
+            # The 'applications' table has job_title and company_name columns already!
+            app_res = supabase.table("applications")\
+                .select("*")\
+                .eq("candidate_id", candidate_id)\
+                .execute()
+
+            # Record a profile view
+            if viewer_user:
+                try:
+                    from service.dashboard_service import DashboardService
+                    DashboardService.record_profile_views([candidate_id], viewer_user)
+                except Exception as ve:
+                    print(f"Non-fatal error recording profile view: {ve}")
+
+            return {
+                "profile": profile_data,
+                "resume": resume_data,
+                "quizzes": quiz_res.data or [],
+                "applications": app_res.data or [],
+                "interviews": [] 
+            }
+        except Exception as e:
+            print(f"Error fetching candidate profile details for {candidate_id}: {e}")
             raise e

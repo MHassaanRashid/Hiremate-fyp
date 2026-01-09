@@ -80,18 +80,28 @@ export default function FindJobsPage() {
 
         setLoading(true)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
+            const token = localStorage.getItem('access_token')
+            if (token) {
                 // Use locationSearch for city/area filtering
                 // Use location for work mode filtering (Remote/On-site/Hybrid)
                 const locationParam = locationSearch || (location !== "All Locations" ? location : undefined)
                 const typeParam = type !== "All Types" ? type : undefined
-                const data = await getJobs(session.access_token, search, locationParam, typeParam)
+                const data = await getJobs(token, search, locationParam, typeParam)
                 console.log("Jobs fetched:", data)
                 console.log("First job:", data[0])
                 console.log("First job applicants_count:", data[0]?.applicants_count)
                 if (isMounted.current) {
                     setJobs(data)
+                }
+            } else {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    const locationParam = locationSearch || (location !== "All Locations" ? location : undefined)
+                    const typeParam = type !== "All Types" ? type : undefined
+                    const data = await getJobs(session.access_token, search, locationParam, typeParam)
+                    if (isMounted.current) {
+                        setJobs(data)
+                    }
                 }
             }
         } catch (error) {
@@ -144,16 +154,23 @@ export default function FindJobsPage() {
         if (!selectedJob) return
 
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                toast.error("Please log in to apply")
-                return
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                await applyToJob(token, selectedJob.id, note)
+                toast.success("Application submitted successfully!")
+                setIsDialogOpen(false)
+                setSelectedJob(null)
+            } else {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) {
+                    toast.error("Please log in to apply")
+                    return
+                }
+                await applyToJob(session.access_token, selectedJob.id, note)
+                toast.success("Application submitted successfully!")
+                setIsDialogOpen(false)
+                setSelectedJob(null)
             }
-
-            await applyToJob(session.access_token, selectedJob.id, note)
-            toast.success("Application submitted successfully!")
-            setIsDialogOpen(false)
-            setSelectedJob(null)
         } catch (error: any) {
             toast.error(error.message || "Failed to submit application")
         }

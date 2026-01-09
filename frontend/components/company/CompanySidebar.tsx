@@ -35,7 +35,8 @@ import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 const sidebarItems = [
   { icon: Home, label: "Dashboard", path: "/company" },
   { icon: Briefcase, label: "My Jobs", path: "/company/jobs" },
-  { icon: Users, label: "Candidates", path: "/company/candidates" },
+  { icon: Users, label: "Talent Pool", path: "/company/talent-pool" },
+  { icon: Calendar, label: "Applications", path: "/company/candidates" },
   { icon: Calendar, label: "Interviews", path: "/company/interviews" },
   { icon: Settings, label: "Settings", path: "/company/settings" },
 ]

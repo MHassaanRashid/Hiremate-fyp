@@ -10,13 +10,83 @@ from schema.dashboard_schema import (
     RecommendedJobSchema,
     InterviewSchema,
     ProfileStrengthSchema,
-    ActivityItemSchema
+    ActivityItemSchema,
+    CandidateProfileSchema
 )
-from typing import List, Optional
+from typing import List, Optional, Any
 
 
 class DashboardService:
     """Service for dashboard-related business logic and database operations"""
+
+    @staticmethod
+    def record_profile_views(candidate_ids: List[str], viewer_user: Any):
+        """
+        Record profile views for multiple candidates by a recruiter.
+        Implements a 24-hour cooldown per recruiter/candidate.
+        """
+        if not candidate_ids:
+            return
+
+        viewer_id = getattr(viewer_user, "id", None)
+        if not viewer_id and isinstance(viewer_user, dict):
+            viewer_id = viewer_user.get("id")
+            
+        if not viewer_id:
+            return
+
+        # Try to get viewer name/company from metadata
+        metadata = getattr(viewer_user, 'user_metadata', {}) or {}
+        if not metadata and isinstance(viewer_user, dict):
+            metadata = viewer_user.get("user_metadata", {})
+
+        viewer_name = metadata.get('full_name', 'A recruiter')
+        viewer_company = metadata.get('company_name', metadata.get('cname', 'Unknown Company'))
+
+        today_val = date.today().isoformat()
+
+        for cand_id in set(candidate_ids):
+            try:
+                # 0. Don't record self-views
+                if str(cand_id) == str(viewer_id):
+                    continue
+                    
+                # 1. Check if already viewed today
+                existing = supabase.table("profile_views").select("id")\
+                    .eq("candidate_id", cand_id)\
+                    .eq("viewer_id", viewer_id)\
+                    .eq("viewed_date", today_val)\
+                    .execute()
+
+                if not existing.data:
+                    # 2. Record view
+                    view_record = {
+                        "candidate_id": cand_id,
+                        "user_id": cand_id,  # Link to profile
+                        "viewer_id": viewer_id,
+                        "viewer_type": "recruiter",
+                        "viewer_name": viewer_name,
+                        "viewer_company": viewer_company,
+                        "viewed_date": today_val,
+                        "view_count": 1
+                    }
+                    supabase.table("profile_views").insert(view_record).execute()
+
+                    # 3. Add to activities
+                    activity_record = {
+                        "candidate_id": cand_id,
+                        "user_id": cand_id,
+                        "activity_type": "profile_view",
+                        "title": "Profile Viewed",
+                        "description": f"{viewer_name} from {viewer_company} viewed your profile.",
+                        "icon": "eye",
+                        "activity_date": datetime.utcnow().isoformat()
+                    }
+                    supabase.table("activities").insert(activity_record).execute()
+            except Exception as e:
+                # Log but don't fail the primary request
+                import logging
+                logging.getLogger(__name__).error(f"Failed to record profile view for {cand_id}: {e}")
     
     @staticmethod
     def _format_timestamp(created_at_str: str) -> str:
@@ -393,6 +463,11 @@ class DashboardService:
         recent_applications = []
         
         if job_ids:
+            # Total candidates in the system
+            # Note: We filter by role if possible, but for now we'll count all potential candidates
+            candidates_res = supabase.table("profiles").select("id", count="exact").eq("role", "candidate").execute()
+            total_candidates = candidates_res.count if hasattr(candidates_res, 'count') else len(candidates_res.data or [])
+
             # Total Applications for these jobs
             apps_result = supabase.table("applications").select("id", count="exact").in_("job_id", job_ids).execute()
             total_applications = apps_result.count if hasattr(apps_result, 'count') else len(apps_result.data or [])
@@ -414,8 +489,12 @@ class DashboardService:
             raw_apps = rec_apps_data.data or []
             
             # Process applications to flatten structure for frontend
+            candidate_ids = []
             for app in raw_apps:
                 candidate_profile = app.get("profiles") or {}
+                cand_id = app.get("user_id")
+                if cand_id:
+                    candidate_ids.append(cand_id)
                 recent_applications.append({
                     "id": app["id"],
                     "job_title": app["job_title"],
@@ -429,12 +508,16 @@ class DashboardService:
                         "skills": candidate_profile.get("skills")
                     }
                 })
+            
+            # Record views for these candidates
+            DashboardService.record_profile_views(candidate_ids, user)
         
         return {
             "stats": {
-                "total_jobs": total_jobs,
+                "total_jobs": len(job_ids),
                 "total_applications": total_applications,
                 "shortlisted": shortlisted,
+                "total_candidates": total_candidates
             },
             "recent_applications": recent_applications
         }

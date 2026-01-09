@@ -28,6 +28,7 @@ import toast from "react-hot-toast"
 import type { TestReport } from "@/types/dashboard"
 import { AnimatedBackground } from "@/components/ui/AnimatedBackground"
 import { cn } from "@/lib/utils"
+import { cleanupGlobalModels } from "@/hooks/proctoring-models-singleton"
 
 export default function QuizReportPage() {
     const router = useRouter()
@@ -41,7 +42,7 @@ export default function QuizReportPage() {
         if (quizId) fetchReport()
     }, [quizId])
 
-    // Exit fullscreen when report page loads
+    // Exit fullscreen and cleanup proctoring when report page loads
     useEffect(() => {
         const exitFullscreen = () => {
             if (document.fullscreenElement) {
@@ -51,18 +52,26 @@ export default function QuizReportPage() {
             }
         }
         exitFullscreen()
+        cleanupGlobalModels() // Aggressively stop camera and models
     }, [])
 
     const fetchReport = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                router.push('/auth/candidate')
-                return
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                const data = await getQuizReport(token, quizId)
+                setReport(data)
+            } else {
+                // Fallback to supabase session
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    const data = await getQuizReport(session.access_token, quizId)
+                    setReport(data)
+                } else {
+                    router.push('/auth/candidate')
+                    return
+                }
             }
-
-            const data = await getQuizReport(session.access_token, quizId)
-            setReport(data)
         } catch (error) {
             console.error("Error fetching report:", error)
             toast.error("Failed to load quiz report")

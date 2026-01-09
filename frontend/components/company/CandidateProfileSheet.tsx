@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { cn } from "@/lib/utils"
 import {
     Sheet,
     SheetContent,
@@ -64,12 +65,65 @@ interface CandidateProfileSheetProps {
 export default function CandidateProfileSheet({
     isOpen,
     onClose,
-    candidate,
+    candidate: initialCandidate,
     onShortlist,
     onReject,
     jobId
 }: CandidateProfileSheetProps) {
     const [isInterviewModalOpen, setIsInterviewModalOpen] = useState(false)
+    const [isLoadingDetails, setIsLoadingDetails] = useState(false)
+    const [fullDetails, setFullDetails] = useState<any>(null)
+
+    const fetchFullDetails = useCallback(async () => {
+        if (!isOpen) return;
+        if (!initialCandidate?.application_id && !initialCandidate?.user_id) return;
+
+        try {
+            setIsLoadingDetails(true)
+            const token = localStorage.getItem("access_token")
+
+            // Try application-specific details first, fallback to general profile
+            const endpoint = initialCandidate.application_id
+                ? `/api/jobs/applications/${initialCandidate.application_id}/details`
+                : `/api/jobs/company/candidates/${initialCandidate.user_id}/profile`;
+
+            const res = await fetch(endpoint, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+
+            if (res.ok) {
+                const data = await res.json()
+                setFullDetails(data)
+            }
+        } catch (err) {
+            console.error("Error fetching full candidate details:", err)
+        } finally {
+            setIsLoadingDetails(false)
+        }
+    }, [initialCandidate?.application_id, initialCandidate?.user_id, isOpen])
+
+    useEffect(() => {
+        if (isOpen && (initialCandidate?.application_id || initialCandidate?.user_id)) {
+            fetchFullDetails()
+        } else {
+            setFullDetails(null)
+        }
+    }, [isOpen, initialCandidate?.application_id, initialCandidate?.user_id, fetchFullDetails])
+
+    const candidate = fullDetails ? {
+        ...initialCandidate,
+        ...fullDetails.profile,
+        // Map backend fields to frontend interface
+        candidate_name: fullDetails.profile?.full_name,
+        candidate_email: fullDetails.profile?.email,
+        candidate_summary: fullDetails.profile?.summary,
+        candidate_skills: fullDetails.profile?.skills,
+        candidate_experience: fullDetails.profile?.experience,
+        candidate_education: fullDetails.profile?.education,
+        candidate_projects: fullDetails.profile?.projects,
+        candidate_certificates: fullDetails.profile?.certificates,
+        status: fullDetails.application?.status || initialCandidate?.status
+    } : initialCandidate;
 
     if (!candidate) return null
 
@@ -309,6 +363,121 @@ export default function CandidateProfileSheet({
                                                 </div>
                                             </div>
                                         ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* AI Quiz Assessment History */}
+                            {fullDetails?.quizzes?.length > 0 && (
+                                <section className="space-y-4">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-1">
+                                        <Brain className="h-4 w-4 text-indigo-500" /> AI Assessment History
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {fullDetails.quizzes.map((quiz: any, i: number) => (
+                                            <div key={i} className="p-4 rounded-xl border border-indigo-100 bg-indigo-50/30">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className="bg-indigo-600 text-white border-0">{quiz.language}</Badge>
+                                                        <span className="text-xs font-semibold text-slate-500">
+                                                            {new Date(quiz.completed_at).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className="text-lg font-black text-indigo-700">{Math.round(quiz.score_percentage)}%</span>
+                                                        <p className="text-[10px] text-indigo-400 font-bold uppercase tracking-wider">Score</p>
+                                                    </div>
+                                                </div>
+                                                {quiz.ai_feedback && (
+                                                    <p className="text-xs text-slate-600 leading-relaxed bg-white/50 p-2 rounded-lg border border-indigo-50 italic">
+                                                        "{quiz.ai_feedback}"
+                                                    </p>
+                                                )}
+                                                <div className="grid grid-cols-3 gap-2 mt-3 text-center">
+                                                    <div className="p-2 rounded-lg bg-white/60">
+                                                        <p className="text-[9px] text-slate-400 uppercase font-bold">Code Quality</p>
+                                                        <p className="text-xs font-bold text-slate-700">{quiz.ai_code_quality_score || 0}/5</p>
+                                                    </div>
+                                                    <div className="p-2 rounded-lg bg-white/60">
+                                                        <p className="text-[9px] text-slate-400 uppercase font-bold">Logic</p>
+                                                        <p className="text-xs font-bold text-slate-700">{quiz.ai_problem_solving_score || 0}/5</p>
+                                                    </div>
+                                                    <div className="p-2 rounded-lg bg-white/60">
+                                                        <p className="text-[9px] text-slate-400 uppercase font-bold">Efficiency</p>
+                                                        <p className="text-xs font-bold text-slate-700">{quiz.ai_efficiency_score || 0}/5</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {/* Interview Feedback */}
+                            {fullDetails?.interviews?.length > 0 && (
+                                <section className="space-y-4">
+                                    <h3 className="font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-1">
+                                        <CalendarClock className="h-4 w-4 text-emerald-500" /> Interview Evaluations
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {fullDetails.interviews.map((interview: any, i: number) => {
+                                            let feedback = null;
+                                            if (interview.feedback) {
+                                                try {
+                                                    feedback = JSON.parse(interview.feedback);
+                                                } catch (e) {
+                                                    feedback = interview.feedback;
+                                                }
+                                            }
+
+                                            return (
+                                                <div key={i} className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/20">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <div>
+                                                            <h4 className="font-bold text-slate-900 text-sm capitalize">{interview.interview_type} Interview</h4>
+                                                            <p className="text-[10px] text-slate-500 font-medium">
+                                                                {new Date(interview.scheduled_date).toLocaleDateString()} with {interview.interviewer_name || "Assigned Interviewer"}
+                                                            </p>
+                                                        </div>
+                                                        <Badge className={cn(
+                                                            "capitalize font-bold border-0",
+                                                            interview.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                                                        )}>
+                                                            {interview.status}
+                                                        </Badge>
+                                                    </div>
+
+                                                    {feedback && typeof feedback === 'object' ? (
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="h-10 w-10 rounded-lg bg-white border border-emerald-100 flex flex-col items-center justify-center">
+                                                                    <span className="text-sm font-black text-emerald-700">{feedback.overallRating || 0}</span>
+                                                                    <span className="text-[8px] text-emerald-400 font-bold uppercase">Rating</span>
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <p className="text-xs font-bold text-slate-700">{feedback.recommendation?.replace('-', ' ').toUpperCase()}</p>
+                                                                    <p className="text-[10px] text-slate-500 italic mt-0.5 line-clamp-2">"{feedback.comments}"</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-2 pb-1">
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-wider">Strengths</p>
+                                                                    <p className="text-[10px] text-slate-600">{feedback.strengths}</p>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[9px] font-bold text-rose-600 uppercase tracking-wider">Weaknesses</p>
+                                                                    <p className="text-[10px] text-slate-600">{feedback.weaknesses}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : interview.notes ? (
+                                                        <p className="text-xs text-slate-600 italic bg-white/50 p-2 rounded-lg">"{interview.notes}"</p>
+                                                    ) : (
+                                                        <p className="text-[10px] text-slate-400 italic">Evaluation pending completion</p>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </section>
                             )}

@@ -46,19 +46,29 @@ export default function QuizPreparationPage() {
 
         const checkStatus = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session) {
-                    router.push('/auth/candidate')
-                    return
-                }
+                const token = localStorage.getItem('access_token')
+                if (token) {
+                    const status = await getPreparationStatus(token, quizId)
+                    setQuizDetails(status)
+                    setQuizReady(status.quiz_ready)
 
-                const status = await getPreparationStatus(session.access_token, quizId)
-                setQuizDetails(status)
-                setQuizReady(status.quiz_ready)
+                    if (!status.quiz_ready) {
+                        interval = setTimeout(checkStatus, 2000)
+                    }
+                } else {
+                    const { data: { session } } = await supabase.auth.getSession()
+                    if (session) {
+                        const status = await getPreparationStatus(session.access_token, quizId)
+                        setQuizDetails(status)
+                        setQuizReady(status.quiz_ready)
 
-                if (!status.quiz_ready) {
-                    // Continue polling if quiz not ready
-                    interval = setTimeout(checkStatus, 2000)
+                        if (!status.quiz_ready) {
+                            interval = setTimeout(checkStatus, 2000)
+                        }
+                    } else {
+                        router.push('/auth/candidate')
+                        return
+                    }
                 }
             } catch (err: any) {
                 console.error("Error checking preparation status:", err)
@@ -77,14 +87,16 @@ export default function QuizPreparationPage() {
         if (quizReady && isModelReady) {
             const startQuiz = async () => {
                 try {
-                    const { data: { session } } = await supabase.auth.getSession()
-                    if (!session) return
-
-                    // Mark preparation as complete
-                    await markPreparationComplete(session.access_token, quizId)
-
-                    // Redirect immediately - no artificial delay
-                    router.push(`/candidate/quiz/${quizId}`)
+                    const token = localStorage.getItem('access_token')
+                    if (token) {
+                        await markPreparationComplete(token, quizId)
+                        router.push(`/candidate/quiz/${quizId}`)
+                    } else {
+                        const { data: { session } } = await supabase.auth.getSession()
+                        if (!session) return
+                        await markPreparationComplete(session.access_token, quizId)
+                        router.push(`/candidate/quiz/${quizId}`)
+                    }
                 } catch (err) {
                     console.error("Error starting quiz:", err)
                     toast.error("Failed to start quiz")

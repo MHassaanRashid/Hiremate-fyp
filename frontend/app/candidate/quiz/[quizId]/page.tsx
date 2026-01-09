@@ -46,7 +46,20 @@ export default function QuizExecutionPage() {
     const [isTerminated, setIsTerminated] = useState(false)
     const videoRef = useRef<HTMLVideoElement>(null)
 
-    // Fullscreen is already active from prepare page - no need to initialize here
+    const [isFullscreen, setIsFullscreen] = useState(true)
+    const [isDevMode, setIsDevMode] = useState(false)
+
+    // Fullscreen status monitoring
+    useEffect(() => {
+        setIsFullscreen(!!document.fullscreenElement)
+    }, [])
+
+    const handleCopyPaste = useCallback((e: React.ClipboardEvent | React.MouseEvent | React.UIEvent) => {
+        if (isDevMode) return;
+        e.preventDefault();
+        toast.error("Interaction is restricted during the assessment.", { id: 'interaction-restricted' });
+    }, [isDevMode]);
+
 
     // Proctoring State
     const [warningMsg, setWarningMsg] = useState("")
@@ -95,8 +108,8 @@ export default function QuizExecutionPage() {
         stopCamera()
 
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
+            const token = localStorage.getItem('access_token')
+            if (token) {
                 let proofUrl = proof;
                 let processedLogs = logs;
 
@@ -115,7 +128,30 @@ export default function QuizExecutionPage() {
                     toast.error("Some snapshots failed to upload", { id: "uploading-evidence" });
                 }
 
-                await terminateQuiz(session.access_token, quizId, reason, proofUrl, processedLogs)
+                await terminateQuiz(token, quizId, reason, proofUrl, processedLogs)
+            } else {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    let proofUrl = proof;
+                    let processedLogs = logs;
+
+                    toast.loading("Uploading evidence artifacts...", { id: "uploading-evidence" });
+                    try {
+                        // Upload termination proof
+                        if (proof && proof.startsWith('data:image')) {
+                            proofUrl = await uploadProctoringProof(proof, quizId, "termination");
+                        }
+                        // Upload individual violation logs
+                        processedLogs = await processViolationLogs(logs);
+
+                        toast.success("Evidence uploaded", { id: "uploading-evidence" });
+                    } catch (uploadErr) {
+                        console.error("Evidence upload failed:", uploadErr);
+                        toast.error("Some snapshots failed to upload", { id: "uploading-evidence" });
+                    }
+
+                    await terminateQuiz(session.access_token, quizId, reason, proofUrl, processedLogs)
+                }
             }
             toast.error("Assessment Terminated due to proctoring violation.")
             router.push(`/candidate/quiz/${quizId}/report`)
@@ -194,20 +230,90 @@ export default function QuizExecutionPage() {
         }
     }, [violationCounts, handleProctoringTermination, violationLogs, captureProof]);
 
-    // Fullscreen Exit Warning (Non-terminating)
+    // Fullscreen Exit Enforcement & Anti-Cheat
     useEffect(() => {
-        const handleFullscreenChange = () => {
-            if (!document.fullscreenElement && !isCompleting && !isTerminated && !loading) {
+        const handleFullscreenChange = async () => {
+            const isFull = !!document.fullscreenElement;
+            setIsFullscreen(isFull);
+
+            if (isFull) {
+                setWarningMsg(prev => prev.includes("FULLSCREEN EXITED") ? "" : prev);
+                // Experimental: Attempt to lock the Escape key (Chromium only)
+                if ('keyboard' in navigator && (navigator as any).keyboard.lock) {
+                    try {
+                        await (navigator as any).keyboard.lock(['Escape']);
+                    } catch (e) {
+                        console.warn("Keyboard lock failed:", e);
+                    }
+                }
+            } else if (!isCompleting && !isTerminated && !loading && !isDevMode) {
                 setWarningMsg("⚠️ FULLSCREEN EXITED! Please re-enter fullscreen immediately.");
                 toast.error("Fullscreen exited! This behavior is being logged.", { duration: 6000 });
-            } else if (document.fullscreenElement) {
-                setWarningMsg(prev => prev.includes("FULLSCREEN EXITED") ? "" : prev);
+                // Unlock keyboard if exited
+                if ('keyboard' in navigator && (navigator as any).keyboard.unlock) {
+                    (navigator as any).keyboard.unlock();
+                }
+            }
+        };
+
+        // Initialize on mount
+        handleFullscreenChange();
+
+        const handleAutoReenter = () => {
+            if (isDevMode) return;
+            if (!document.fullscreenElement && !isCompleting && !isTerminated && !loading) {
+                document.documentElement.requestFullscreen().catch(() => { });
             }
         };
 
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, [isCompleting, isTerminated, loading]);
+        window.addEventListener('click', handleAutoReenter);
+
+        // Blocking keys that exit fullscreen or allow navigating away
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Dev Mode Toggle: Ctrl + Shift + Alt + D
+            if (e.ctrlKey && e.shiftKey && e.altKey && e.key === 'D') {
+                e.preventDefault();
+                setIsDevMode(prev => {
+                    const next = !prev;
+                    toast.success(`Developer Mode ${next ? 'ENABLED - Safety guards off' : 'DISABLED - Safety guards on'}`, { icon: '🛠️' });
+                    return next;
+                });
+                return;
+            }
+
+            if (isDevMode) return;
+
+            const blockedKeys = ['Escape', 'F11', 'PrintScreen', 'F12'];
+            if (blockedKeys.includes(e.key)) {
+                e.preventDefault();
+                toast.error(`${e.key} key is disabled during the assessment.`, { id: 'key-blocked' });
+                // If they pressed escape, they likely exited fullscreen - try to re-engage immediately
+                if (e.key === 'Escape') setTimeout(handleAutoReenter, 100);
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        // Prevent back/forward/reload
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (!isCompleting && !isTerminated && !loading && !isDevMode) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            window.removeEventListener('click', handleAutoReenter);
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            if ('keyboard' in navigator && (navigator as any).keyboard.unlock) {
+                (navigator as any).keyboard.unlock();
+            }
+        };
+    }, [isCompleting, isTerminated, loading, isDevMode]);
 
     // Anti-Copy/Paste and Right Click Protection
 
@@ -237,16 +343,24 @@ export default function QuizExecutionPage() {
 
     const fetchQuizData = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                router.push('/auth/candidate')
-                return
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                const data = await getQuiz(token, quizId)
+                setQuiz(data.quiz)
+                setQuestions(data.questions)
+                setTimeLeft(data.quiz.duration_minutes * 60)
+            } else {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    const data = await getQuiz(session.access_token, quizId)
+                    setQuiz(data.quiz)
+                    setQuestions(data.questions)
+                    setTimeLeft(data.quiz.duration_minutes * 60)
+                } else {
+                    router.push('/auth/candidate')
+                    return
+                }
             }
-
-            const data = await getQuiz(session.access_token, quizId)
-            setQuiz(data.quiz)
-            setQuestions(data.questions)
-            setTimeLeft(data.quiz.duration_minutes * 60)
         } catch (error) {
             console.error("Error fetching quiz:", error)
             toast.error("Failed to load assessment")
@@ -268,13 +382,21 @@ export default function QuizExecutionPage() {
 
         setSubmitting(true)
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) return
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                await submitQuizAnswer(token, quizId, {
+                    question_id: questions[currentIndex].id,
+                    selected_option: selectedOption
+                })
+            } else {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) return
 
-            await submitQuizAnswer(session.access_token, quizId, {
-                question_id: questions[currentIndex].id,
-                selected_option: selectedOption
-            })
+                await submitQuizAnswer(session.access_token, quizId, {
+                    question_id: questions[currentIndex].id,
+                    selected_option: selectedOption
+                })
+            }
 
             // Reset selection for NEXT question
             setSelectedOption(null)
@@ -292,10 +414,14 @@ export default function QuizExecutionPage() {
         }
     }
 
-    const stopCamera = () => {
+    function stopCamera() {
+        console.log("Proctoring: stopCamera called");
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream
-            stream.getTracks().forEach(track => track.stop())
+            stream.getTracks().forEach(track => {
+                track.stop();
+                console.log(`Proctoring: Stopped track: ${track.label}`);
+            });
             videoRef.current.srcObject = null
         }
         cleanupGlobalModels();
@@ -309,17 +435,29 @@ export default function QuizExecutionPage() {
         stopCamera()
 
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) return
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                let processedLogs = violationLogs;
+                if (violationLogs.length > 0) {
+                    toast.loading("Uploading session logs...", { id: "upload-logs" });
+                    processedLogs = await processViolationLogs(violationLogs);
+                    toast.success("Logs uploaded", { id: "upload-logs" });
+                }
 
-            let processedLogs = violationLogs;
-            if (violationLogs.length > 0) {
-                toast.loading("Uploading session logs...", { id: "upload-logs" });
-                processedLogs = await processViolationLogs(violationLogs);
-                toast.success("Logs uploaded", { id: "upload-logs" });
+                await completeQuiz(token, quizId, processedLogs)
+            } else {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) return
+
+                let processedLogs = violationLogs;
+                if (violationLogs.length > 0) {
+                    toast.loading("Uploading session logs...", { id: "upload-logs" });
+                    processedLogs = await processViolationLogs(violationLogs);
+                    toast.success("Logs uploaded", { id: "upload-logs" });
+                }
+
+                await completeQuiz(session.access_token, quizId, processedLogs)
             }
-
-            await completeQuiz(session.access_token, quizId, processedLogs)
             // Delay slightly to let the animation play/user perceive the "analysis"
             await new Promise(resolve => setTimeout(resolve, 2000))
 
@@ -375,7 +513,40 @@ export default function QuizExecutionPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 relative">
+        <div
+            className="min-h-screen bg-slate-50 relative select-none"
+            onCopy={handleCopyPaste}
+            onPaste={handleCopyPaste}
+            onCut={handleCopyPaste}
+            onContextMenu={handleCopyPaste}
+            onDragStart={handleCopyPaste}
+        >
+            {/* Fullscreen Enforcement Overlay */}
+            {!isFullscreen && !isCompleting && !isTerminated && !loading && !isDevMode && (
+                <div className="fixed inset-0 z-[9999] bg-slate-900/90 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
+                    <div className="max-w-md w-full bg-white rounded-3xl p-8 shadow-2xl space-y-6">
+                        <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <ShieldAlert className="w-10 h-10 text-red-600 animate-bounce" />
+                        </div>
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Fullscreen Required</h2>
+                            <p className="text-slate-500 font-medium">
+                                To ensure academic integrity, this assessment must be completed in fullscreen mode.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => document.documentElement.requestFullscreen()}
+                            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 transition-all text-lg"
+                        >
+                            Re-enter Fullscreen
+                        </Button>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                            This event has been logged for review
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <div className="fixed inset-0 z-0">
                 <AnimatedBackground />
             </div>

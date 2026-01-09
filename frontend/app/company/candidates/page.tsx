@@ -161,8 +161,8 @@ export default function CandidatesPage() {
 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-900">Candidates</h1>
-                        <p className="text-slate-500 mt-2">Manage applications across all your active job postings.</p>
+                        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Applications Management</h1>
+                        <p className="text-slate-500 font-medium">Review and manage candidates who have applied to your job postings.</p>
                     </div>
                     <div className="flex items-center gap-3">
                         <div className="relative group">

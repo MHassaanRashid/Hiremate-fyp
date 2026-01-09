@@ -106,6 +106,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
         setUser(updatedUser)
         localStorage.setItem("user", JSON.stringify(updatedUser))
+
+        // Sync with Supabase client session
+        await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: localStorage.getItem("refresh_token") || ""
+        })
+
         return true
       } else {
         // Token invalid - session expired
@@ -202,6 +209,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       localStorage.setItem("user", JSON.stringify(userData))
       localStorage.setItem("access_token", data.access_token)
+      localStorage.setItem("refresh_token", data.refresh_token)
+
+      // Sync with Supabase client session
+      await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token
+      })
+
       setUser(userData)
 
       // Map backend role to frontend role for routing
@@ -315,6 +330,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       localStorage.setItem("user", JSON.stringify(userData))
       localStorage.setItem("access_token", accessToken)
+      localStorage.setItem("refresh_token", refreshToken)
+
+      // Sync with Supabase client session
+      await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken
+      })
+
       setUser(userData)
 
       // ✅ STEP 4: Redirect based on BACKEND role only

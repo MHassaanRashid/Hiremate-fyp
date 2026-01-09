@@ -36,14 +36,21 @@ export default function AssessmentHistoryPage() {
 
     const fetchHistory = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession()
-            if (!session) {
-                router.push('/auth/candidate')
-                return
+            const token = localStorage.getItem('access_token')
+            if (token) {
+                const tests = await getQuizHistory(token)
+                setHistory(tests)
+            } else {
+                // Fallback to supabase session
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    const tests = await getQuizHistory(session.access_token)
+                    setHistory(tests)
+                } else {
+                    router.push('/auth/candidate')
+                    return
+                }
             }
-
-            const tests = await getQuizHistory(session.access_token)
-            setHistory(tests)
         } catch (error) {
             console.error("Error fetching history:", error)
             toast.error("Failed to load assessment history")

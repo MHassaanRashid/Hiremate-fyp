@@ -70,16 +70,24 @@ function QuizPreparationContent() {
 
         const createQuizAsync = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
-                if (!session) {
-                    router.push('/auth/candidate')
-                    return
+                const token = localStorage.getItem('access_token')
+                if (!token) {
+                    // Fallback to supabase session
+                    const { data: { session } } = await supabase.auth.getSession()
+                    if (!session) {
+                        router.push('/auth/candidate')
+                        return
+                    }
+                    const result = await createQuiz(session.access_token, languageCode)
+                    setQuizId(result.test_id)
+                    setQuizDetails(result)
+                    setQuizReady(true)
+                } else {
+                    const result = await createQuiz(token, languageCode)
+                    setQuizId(result.test_id)
+                    setQuizDetails(result)
+                    setQuizReady(true)
                 }
-
-                const result = await createQuiz(session.access_token, languageCode)
-                setQuizId(result.test_id)
-                setQuizDetails(result)
-                setQuizReady(true)
             } catch (error: any) {
                 console.error("Error creating quiz:", error)
                 setCreationError(error.message || "Failed to create quiz")

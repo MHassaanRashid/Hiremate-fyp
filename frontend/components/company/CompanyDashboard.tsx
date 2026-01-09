@@ -163,7 +163,7 @@ export default function CompanyDashboard({
                         </div>
 
                         {/* Stats Grid - Integrated into header card bottom */}
-                        <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white">
+                        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-slate-100 bg-white">
                             <div className="p-6 md:p-8 hover:bg-slate-50 transition-colors group cursor-pointer" onClick={() => router.push('/company/jobs')}>
                                 <div className="flex items-center gap-4">
                                     <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 shadow-sm">
@@ -194,6 +194,17 @@ export default function CompanyDashboard({
                                     <div>
                                         <p className="text-3xl font-black text-slate-900">{stats.shortlisted}</p>
                                         <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Shortlisted</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="p-6 md:p-8 hover:bg-slate-50 transition-colors group cursor-pointer" onClick={() => router.push('/company/candidates')}>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm">
+                                        <Users className="w-7 h-7" />
+                                    </div>
+                                    <div>
+                                        <p className="text-3xl font-black text-slate-900">{(stats as any).total_candidates || 0}</p>
+                                        <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Total Talent Pool</p>
                                     </div>
                                 </div>
                             </div>
