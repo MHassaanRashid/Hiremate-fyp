@@ -322,19 +322,28 @@ async def complete_test(
         
         # Update profile if passed and clean record
         # Note: If they were already eligible from a previous test, keep them eligible
-        current_profile = supabase_client.table("profiles").select("interview_eligible").eq("id", current_user.id).single().execute()
-        was_eligible = current_profile.data.get('interview_eligible', False) if current_profile.data else False
+        current_profile = supabase_client.table("profiles").select("interview_eligible, test_status").eq("id", current_user.id).single().execute()
+        was_eligible = current_profile.data.get('interview_eligible', False) if (current_profile.data and current_profile.data.get('interview_eligible') is not None) else False
         
+        # New eligibility is True if they passed THIS test clean OR they were already eligible
         interview_eligible = (passed and clean_record) or was_eligible
-        print(f"User {current_user.id} eligibility: was_eligible={was_eligible} -> is_eligible={interview_eligible}")
         
+        print(f"User {current_user.id} evaluation: passed={passed}, clean={clean_record}, was_eligible={was_eligible} -> final_eligible={interview_eligible}")
+        
+        # Determine new test_status
+        # If they ever passed, it stays passed? Or reflects latest?
+        # Typically test_status might reflect the "latest" attempt, but interview_eligible is the real gate.
+        # Let's make test_status reflect the latest successful state if it exists.
+        new_test_status = 'passed' if (passed or was_eligible) else 'failed'
+
         profile_update = {
-            'test_status': 'passed' if (passed or was_eligible) else 'failed',
+            'test_status': new_test_status,
             'last_test_date': datetime.utcnow().isoformat(),
             'interview_eligible': interview_eligible
         }
         
         # Add last_test_language only if we passed this test
+        # This allows them to switch "active" interview language by passing a new test
         if passed:
             profile_update['last_test_language'] = test['language']
             
@@ -342,7 +351,7 @@ async def complete_test(
             supabase_client.table("profiles").update(profile_update).eq("id", current_user.id).execute()
         except Exception as e:
             print(f"Warning: Failed to update profile with full data: {e}. Trying partial update...")
-            # Fallback for missing last_test_language column
+            # Fallback for missing last_test_language column (though we confirmed it exists)
             profile_update.pop('last_test_language', None)
             supabase_client.table("profiles").update(profile_update).eq("id", current_user.id).execute()
         

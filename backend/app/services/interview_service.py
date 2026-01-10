@@ -1,5 +1,6 @@
 from app.core.extension import supabase_client
 from app.services.zoom_service import zoom_service
+from app.services.email_service import email_service
 from datetime import datetime, timedelta
 import uuid
 import json
@@ -143,6 +144,36 @@ class InterviewService:
                 print(f"Warning: Failed to record activity: {activity_err}")
                 # We don't raise here because the interview is already booked in 'interviews' table
             
+            # 5. Send Email Notifications (Non-blocking)
+            try:
+                email_details = {
+                    "job_title": job_title,
+                    "company_name": company_name,
+                    "scheduled_at": scheduled_at,
+                    "zoom_link": zoom_meeting["join_url"],
+                    "interviewer_name": interviewer["full_name"],
+                    "other_party_name": candidate["full_name"]
+                }
+                
+                # To Candidate
+                email_service.send_interview_scheduled_email(
+                    recipient_email=candidate["email"],
+                    recipient_name=candidate["full_name"],
+                    role="candidate",
+                    details=email_details
+                )
+                
+                # To Interviewer
+                email_service.send_interview_scheduled_email(
+                    recipient_email=interviewer["email"],
+                    recipient_name=interviewer["full_name"],
+                    role="interviewer",
+                    details=email_details
+                )
+                
+            except Exception as email_err:
+                print(f"Warning: Failed to send emails: {email_err}")
+
             return {
                 "interview_id": interview_id,
                 "zoom_link": zoom_meeting["join_url"],

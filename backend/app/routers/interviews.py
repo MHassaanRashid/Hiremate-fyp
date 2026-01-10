@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Body
 from app.core.extension import supabase_client
 from app.routers.auth_dependency import get_current_user
+from app.services.email_service import email_service
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -16,6 +17,8 @@ class InterviewCreate(BaseModel):
     meeting_link: Optional[str] = None
     location: Optional[str] = None
     notes: Optional[str] = None
+    interviewer_id: Optional[str] = None # For selecting external interviewer
+    interview_type: Optional[str] = "Live Technical Interview"
 
 class InterviewUpdate(BaseModel):
     scheduled_at: Optional[datetime] = None
@@ -32,9 +35,29 @@ async def schedule_interview(
     try:
         user_id = user.id
         
-        # Verify user is a recruiter (optional, but good practice)
-        # role = user.user_metadata.get("role")
-        # if role != "recruiter": ... 
+        profile_res = supabase_client.table("profiles").select("*").eq("id", user_id).single().execute()
+        recruiter = profile_res.data or {}
+        company_name = recruiter.get("company_name", "HireMate Partner")
+        
+        # 2. Get Candidate Details
+        candidate_res = supabase_client.table("profiles").select("*").eq("id", interview_data.candidate_id).single().execute()
+        candidate = candidate_res.data or {}
+        
+        # 3. Get Job Details
+        job_res = supabase_client.table("jobs").select("job_title").eq("id", interview_data.job_id).single().execute()
+        job = job_res.data or {}
+        job_title = job.get("job_title", "Technical Role")
+        
+        # 4. Handle Interviewer (Either specific one or the recruiter themselves)
+        interviewer_id = interview_data.interviewer_id or user_id
+        interviewer_name = recruiter.get("full_name", "Interviewer")
+        interviewer_email = recruiter.get("email", "")
+        
+        if interview_data.interviewer_id and interview_data.interviewer_id != user_id:
+            int_res = supabase_client.table("profiles").select("*").eq("id", interview_data.interviewer_id).single().execute()
+            if int_res.data:
+                interviewer_name = int_res.data.get("full_name")
+                interviewer_email = int_res.data.get("email")
 
         new_interview = {
             "recruiter_id": user_id,
@@ -46,13 +69,46 @@ async def schedule_interview(
             "meeting_link": interview_data.meeting_link,
             "location": interview_data.location,
             "notes": interview_data.notes,
-            "status": "scheduled"
+            "status": "scheduled",
+            "interviewer_name": interviewer_name,
+            "interviewer_email": interviewer_email,
+            "company_name": company_name,
+            "job_title": job_title,
+            "interview_type": interview_data.interview_type
         }
         
         res = supabase_client.table("interviews").insert(new_interview).execute()
         
         if not res.data:
             raise HTTPException(status_code=400, detail="Failed to schedule interview")
+        
+        scheduled_at_str = interview_data.scheduled_at.strftime("%Y-%m-%d %H:%M")
+        
+        # 5. Send Emails (Non-blocking)
+        try:
+            details = {
+                "job_title": job_title,
+                "company_name": company_name,
+                "scheduled_at": scheduled_at_str,
+                "zoom_link": interview_data.meeting_link or "Link will be shared soon",
+                "interviewer_name": interviewer_name,
+                "other_party_name": candidate.get("full_name", "Candidate")
+            }
+            
+            # To Candidate
+            if candidate.get("email"):
+                email_service.send_interview_scheduled_email(candidate["email"], candidate.get("full_name", "Candidate"), "candidate", details)
+            
+            # To Interviewer
+            if interviewer_email:
+                email_service.send_interview_scheduled_email(interviewer_email, interviewer_name, "interviewer", details)
+                
+            # To Recruiter/Company
+            if recruiter.get("email"):
+                email_service.send_interview_scheduled_email(recruiter["email"], recruiter.get("full_name", "Recruiter"), "company", details)
+                
+        except Exception as email_err:
+            print(f"Warning: Failed to send emails: {email_err}")
             
         return {"message": "Interview scheduled successfully", "interview": res.data[0]}
 
@@ -113,6 +169,22 @@ async def get_company_interviews(user=Depends(get_current_user)):
         return {"interviews": res.data}
     except Exception as e:
         print(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/interviewers")
+async def list_available_interviewers(user=Depends(get_current_user)):
+    """
+    List all available interviewers (profiles with interviewer role)
+    """
+    try:
+        # Fetch profiles where role metadata in supabase or a flag indicates interviewer
+        # Assuming for now we check a 'role' column or similar if it exists
+        # In this project, roles are often managed via profile types or metadata.
+        # Let's fetch all profiles with role 'interviewer'
+        res = supabase_client.table("profiles").select("id, full_name, email, avatar_url, expertise").eq("role", "interviewer").execute()
+        return res.data or []
+    except Exception as e:
+        print(f"Error listing interviewers: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/{interview_id}")

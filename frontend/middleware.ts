@@ -124,11 +124,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/auth/:path*",
-    "/company",
-    "/candidate",
-    "/interviewer",
+    "/company/:path*",
+    "/candidate/:path*",
     "/interviewer/:path*",
-    "/admin",
     "/admin/:path*",
     "/oauth-callback"
   ],

@@ -22,7 +22,7 @@ export default function AdminJobsPage() {
     const fetchJobs = async () => {
         try {
             const token = localStorage.getItem("access_token")
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/jobs`, {
+            const response = await fetch(`/api/admin/jobs`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
             if (response.ok) {
@@ -42,7 +42,7 @@ export default function AdminJobsPage() {
 
         try {
             const token = localStorage.getItem("access_token")
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/jobs/${jobId}`, {
+            const response = await fetch(`/api/admin/jobs/${jobId}`, {
                 method: "DELETE",
                 headers: { Authorization: `Bearer ${token}` }
             })

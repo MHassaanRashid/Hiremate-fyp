@@ -23,18 +23,34 @@ async def get_available_slots(tech_stack: str, current_user = Depends(get_curren
     try:
         # 1. Verify candidate is eligible
         print(f"Checking eligibility for user: {current_user.id}")
-        profile_res = supabase_client.table("profiles").select("interview_eligible").eq("id", current_user.id).single().execute()
+        profile_res = supabase_client.table("profiles").select("interview_eligible, last_test_language").eq("id", current_user.id).single().execute()
         
-        print(f"Profile data retrieved: {profile_res.data}")
+        print(f"Profile data retrieved for slots: {profile_res.data}")
         
         if not profile_res.data:
             raise HTTPException(status_code=403, detail="Candidate profile not found. Please complete your profile first.")
             
-        if not profile_res.data.get('interview_eligible'):
-            # Check why they are not eligible
+        profile = profile_res.data
+        if not profile.get('interview_eligible'):
             raise HTTPException(
                 status_code=403, 
                 detail="Candidate is not eligible for a live interview yet. You must pass the AI assessment with a clean record first."
+            )
+
+        # Verify language match
+        last_lang = profile.get('last_test_language', '').lower()
+        requested_lang = tech_stack.lower()
+        
+        # Mapping common variations
+        lang_map = {'py': 'python', 'js': 'javascript', 'ts': 'typescript', 'cpp': 'c++', 'csharp': 'c#'}
+        normalized_last = lang_map.get(last_lang, last_lang)
+        normalized_requested = lang_map.get(requested_lang, requested_lang)
+
+        if normalized_last != normalized_requested:
+            print(f"Language mismatch: profile={normalized_last}, requested={normalized_requested}")
+            raise HTTPException(
+                status_code=403,
+                detail=f"You are eligible for a {profile.get('last_test_language')} interview, not {tech_stack}. Please schedule for the correct language."
             )
 
         # 2. Get matched interviewers
@@ -86,11 +102,15 @@ async def book_slot(
             raise HTTPException(status_code=403, detail="Candidate is not eligible for booking. Please complete the assessment first.")
 
         # 2. Schedule via service
+        profile = profile_res.data
+        lang = profile.get('last_test_language', 'Technical')
+        job_title = f"{lang} Technical Interview"
+
         result = interview_service.schedule_live_interview(
             candidate_id=str(current_user.id),
             interviewer_id=request.interviewer_id,
             scheduled_at=request.scheduled_at.isoformat(),
-            job_title=request.job_title,
+            job_title=job_title,
             company_name=request.company_name
         )
         

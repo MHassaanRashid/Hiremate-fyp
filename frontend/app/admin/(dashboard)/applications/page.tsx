@@ -18,7 +18,7 @@ export default function AdminApplicationsPage() {
         const fetchApplications = async () => {
             try {
                 const token = localStorage.getItem("access_token")
-                const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/applications`, {
+                const response = await fetch(`/api/admin/applications`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
                 if (response.ok) {

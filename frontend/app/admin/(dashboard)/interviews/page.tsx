@@ -20,7 +20,7 @@ export default function AdminInterviewsPage() {
     const fetchInterviews = async () => {
         try {
             const token = localStorage.getItem("access_token")
-            const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/interviews`, {
+            const response = await fetch(`/api/admin/interviews`, {
                 headers: { Authorization: `Bearer ${token}` }
             })
             if (response.ok) {

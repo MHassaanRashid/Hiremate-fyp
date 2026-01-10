@@ -33,7 +33,7 @@ export default function AdminUserDetailsPage() {
                 // I will add a GET /admin/users/{id} endpoint to backend swiftly in next step.
                 // For now, I'll safeguard the UI to load.
 
-                const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/users/${params.id}`, {
+                const res = await fetch(`/api/admin/users/${params.id}`, {
                     headers: { Authorization: `Bearer ${token}` }
                 })
 

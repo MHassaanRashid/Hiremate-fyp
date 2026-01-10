@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,21 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Calendar, Clock, Link as LinkIcon, MapPin, Loader2, CalendarClock } from "lucide-react"
+import { Calendar, Clock, Link as LinkIcon, MapPin, Loader2, CalendarClock, UserCheck } from "lucide-react"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
+interface Interviewer {
+    id: string
+    full_name: string
+    email: string
+    expertise?: string[]
+}
 
 interface ScheduleInterviewModalProps {
     isOpen: boolean
@@ -37,15 +51,43 @@ export default function ScheduleInterviewModal({
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    // Default values
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         time: "10:00",
         duration: "30",
         meeting_link: "",
         location: "",
-        notes: ""
+        notes: "",
+        interviewer_id: "" // Empty means "Conduct Myself"
     })
+
+    const [interviewers, setInterviewers] = useState<Interviewer[]>([])
+    const [fetchingInterviewers, setFetchingInterviewers] = useState(false)
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchInterviewers()
+        }
+    }, [isOpen])
+
+    const fetchInterviewers = async () => {
+        setFetchingInterviewers(true)
+        try {
+            const res = await fetch("/api/interviews/interviewers", {
+                headers: {
+                    "Authorization": `Bearer ${localStorage.getItem("access_token")}`
+                }
+            })
+            if (res.ok) {
+                const data = await res.json()
+                setInterviewers(data)
+            }
+        } catch (err) {
+            console.error("Failed to fetch interviewers:", err)
+        } finally {
+            setFetchingInterviewers(false)
+        }
+    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -70,7 +112,8 @@ export default function ScheduleInterviewModal({
                 duration_minutes: parseInt(formData.duration),
                 meeting_link: formData.meeting_link,
                 location: formData.location,
-                notes: formData.notes
+                notes: formData.notes,
+                interviewer_id: formData.interviewer_id || null
             }
 
             const res = await fetch(`${backend}/interviews`, {
@@ -151,6 +194,32 @@ export default function ScheduleInterviewModal({
                                 />
                             </div>
                         </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="interviewer" className="text-slate-700 font-medium">Assign Interviewer</Label>
+                        <Select
+                            value={formData.interviewer_id}
+                            onValueChange={(value) => setFormData({ ...formData, interviewer_id: value })}
+                        >
+                            <SelectTrigger className="border-slate-200 focus:border-blue-400 focus:ring-blue-400">
+                                <SelectValue placeholder="Select an interviewer" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="">Conduct Interview Myself</SelectItem>
+                                {interviewers.map((int) => (
+                                    <SelectItem key={int.id} value={int.id}>
+                                        {int.full_name} ({int.expertise?.slice(0, 2).join(", ") || "Technical"})
+                                    </SelectItem>
+                                ))}
+                                {interviewers.length === 0 && !fetchingInterviewers && (
+                                    <SelectItem value="" disabled>No match found (Default: Self)</SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
+                        <p className="text-[11px] text-slate-500">
+                            The interviewer and candidate will both receive email notifications.
+                        </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">

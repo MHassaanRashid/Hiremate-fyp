@@ -30,8 +30,8 @@ export default function AdminDashboard() {
             const headers = { Authorization: `Bearer ${token}` }
 
             const [statsRes, analyticsRes] = await Promise.all([
-                fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/stats`, { headers }),
-                fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/admin/analytics`, { headers })
+                fetch(`/api/admin/stats`, { headers }),
+                fetch(`/api/admin/analytics`, { headers })
             ])
 
             if (statsRes.ok) {
